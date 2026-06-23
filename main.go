@@ -25,15 +25,7 @@ func main() {
 		log.Fatalf("supervisor: %v", err)
 	}
 
-	tokenFile := "/run/secrets/refresh-token"
-	if data, err := os.ReadFile(tokenFile); err == nil && len(data) > 0 {
-		log.Println("startup: token secret found, exchanging and activating proxy...")
-		if startErr := sup.start(string(data)); startErr != nil {
-			log.Printf("startup: failed to start proxy: %v", startErr)
-		}
-	} else {
-		log.Println("startup: no token secret found, waiting for POST /token")
-	}
+	log.Println("startup: waiting for POST /token to activate the proxy")
 
 	// Proxy server — forwards requests to upstream with injected token.
 	proxySrv := &http.Server{

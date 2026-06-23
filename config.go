@@ -9,14 +9,7 @@ import (
 
 // Config holds the full application configuration.
 type Config struct {
-	OIDC  OIDCConfig
 	Proxy ProxyConfig
-}
-
-// OIDCConfig holds OIDC token endpoint settings.
-type OIDCConfig struct {
-	Endpoint string
-	ClientID string
 }
 
 // ProxyConfig holds proxy process settings.
@@ -48,14 +41,6 @@ func parseConfig(src string) (*Config, error) {
 	}
 
 	cfg := &Config{}
-	var err error
-
-	if cfg.OIDC.Endpoint, err = require(flat, "endpoint"); err != nil {
-		return nil, fmt.Errorf("config: %w", err)
-	}
-	if cfg.OIDC.ClientID, err = require(flat, "client_id"); err != nil {
-		return nil, fmt.Errorf("config: %w", err)
-	}
 
 	if raw, ok := flat["port"]; ok {
 		n, convErr := strconv.Atoi(raw)
@@ -79,12 +64,4 @@ func cutKV(line string) (key, value string, ok bool) {
 		return
 	}
 	return strings.TrimSpace(key), strings.TrimSpace(value), true
-}
-
-func require(m map[string]string, key string) (string, error) {
-	v, ok := m[key]
-	if !ok || v == "" {
-		return "", fmt.Errorf("missing required key %q", key)
-	}
-	return v, nil
 }

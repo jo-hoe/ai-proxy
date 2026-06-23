@@ -9,7 +9,7 @@ import (
 // supervisorIface is the subset of Supervisor used by the API.
 // Defining it here enables test mocking without a framework.
 type supervisorIface interface {
-	UpdateToken(refreshToken string) error
+	UpdateToken(endpoint, clientID, refreshToken string) error
 	Status() ProxyStatus
 }
 
@@ -31,11 +31,21 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	a.mux.ServeHTTP(w, r)
 }
 
-// handlePostToken accepts a refresh token via form field "token",
-// validates it by performing an OIDC exchange, and restarts the proxy.
+// handlePostToken accepts a refresh token, client ID, and OIDC endpoint via
+// form fields, validates via OIDC exchange, and hot-swaps the access token.
 func (a *API) handlePostToken(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		writeError(w, http.StatusBadRequest, "cannot parse form")
+		return
+	}
+	endpoint := r.FormValue("endpoint")
+	if endpoint == "" {
+		writeError(w, http.StatusBadRequest, "form field 'endpoint' is required")
+		return
+	}
+	clientID := r.FormValue("client_id")
+	if clientID == "" {
+		writeError(w, http.StatusBadRequest, "form field 'client_id' is required")
 		return
 	}
 	token := r.FormValue("token")
@@ -43,7 +53,7 @@ func (a *API) handlePostToken(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "form field 'token' is required")
 		return
 	}
-	if err := a.sup.UpdateToken(token); err != nil {
+	if err := a.sup.UpdateToken(endpoint, clientID, token); err != nil {
 		log.Printf("POST /token: %v", err)
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 		return

@@ -1,7 +1,3 @@
-oidc:
-  endpoint: "https://your-oidc-server/oauth2/token"
-  client_id: "your-client-id"
-
 proxy:
   port: 7655
   upstream_url: "https://your-upstream-llm-api"

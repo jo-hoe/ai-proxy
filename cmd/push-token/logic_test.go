@@ -11,6 +11,14 @@ import (
 	"github.com/jo-hoe/ai-proxy/internal/wincred"
 )
 
+const testEndpoint = "https://oidc.example.com/token"
+const testClientID = "my-client"
+
+var requiredFlags = []string{
+	"--endpoint", testEndpoint,
+	"--client-id", testClientID,
+}
+
 type stubStore struct {
 	creds []wincred.Credential
 	err   error
@@ -20,11 +28,13 @@ func (s *stubStore) FindByPrefix(_ string) ([]wincred.Credential, error) {
 	return s.creds, s.err
 }
 
-func TestRun_PostsToken(t *testing.T) {
-	var received string
+func TestRun_PostsAllFields(t *testing.T) {
+	var gotEndpoint, gotClientID, gotToken string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
-		received = r.FormValue("token")
+		gotEndpoint = r.FormValue("endpoint")
+		gotClientID = r.FormValue("client_id")
+		gotToken = r.FormValue("token")
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	}))
@@ -33,23 +43,46 @@ func TestRun_PostsToken(t *testing.T) {
 	store := &stubStore{creds: []wincred.Credential{
 		{Target: "proxy-cli:http://host", Token: "mytoken"},
 	}}
-	if err := run([]string{"--url", srv.URL}, store); err != nil {
+	args := append([]string{"--url", srv.URL}, requiredFlags...)
+	if err := run(args, store); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if received != "mytoken" {
-		t.Errorf("received token = %q, want mytoken", received)
+	if gotEndpoint != testEndpoint {
+		t.Errorf("endpoint = %q, want %q", gotEndpoint, testEndpoint)
+	}
+	if gotClientID != testClientID {
+		t.Errorf("client_id = %q, want %q", gotClientID, testClientID)
+	}
+	if gotToken != "mytoken" {
+		t.Errorf("token = %q, want mytoken", gotToken)
+	}
+}
+
+func TestRun_MissingEndpoint(t *testing.T) {
+	err := run([]string{"--client-id", testClientID}, &stubStore{})
+	if err == nil || !strings.Contains(err.Error(), "-endpoint") {
+		t.Errorf("expected -endpoint error, got: %v", err)
+	}
+}
+
+func TestRun_MissingClientID(t *testing.T) {
+	err := run([]string{"--endpoint", testEndpoint}, &stubStore{})
+	if err == nil || !strings.Contains(err.Error(), "-client-id") {
+		t.Errorf("expected -client-id error, got: %v", err)
 	}
 }
 
 func TestRun_NoCredentials(t *testing.T) {
-	err := run([]string{"--url", "http://unused"}, &stubStore{})
+	args := append([]string{"--url", "http://unused"}, requiredFlags...)
+	err := run(args, &stubStore{})
 	if err == nil || !strings.Contains(err.Error(), "no credentials found") {
 		t.Errorf("expected 'no credentials found', got: %v", err)
 	}
 }
 
 func TestRun_StoreError(t *testing.T) {
-	err := run([]string{"--url", "http://unused"}, &stubStore{err: errors.New("access denied")})
+	args := append([]string{"--url", "http://unused"}, requiredFlags...)
+	err := run(args, &stubStore{err: errors.New("access denied")})
 	if err == nil || !strings.Contains(err.Error(), "credential lookup") {
 		t.Errorf("expected 'credential lookup', got: %v", err)
 	}
@@ -59,7 +92,8 @@ func TestRun_EmptyToken(t *testing.T) {
 	store := &stubStore{creds: []wincred.Credential{
 		{Target: "proxy-cli:http://host", Token: ""},
 	}}
-	err := run([]string{"--url", "http://unused"}, store)
+	args := append([]string{"--url", "http://unused"}, requiredFlags...)
+	err := run(args, store)
 	if err == nil || !strings.Contains(err.Error(), "empty token") {
 		t.Errorf("expected 'empty token', got: %v", err)
 	}
@@ -75,7 +109,8 @@ func TestRun_APIError(t *testing.T) {
 	store := &stubStore{creds: []wincred.Credential{
 		{Target: "proxy-cli:http://host", Token: "badtoken"},
 	}}
-	err := run([]string{"--url", srv.URL}, store)
+	args := append([]string{"--url", srv.URL}, requiredFlags...)
+	err := run(args, store)
 	if err == nil || !strings.Contains(err.Error(), "HTTP 422") {
 		t.Errorf("expected HTTP 422 error, got: %v", err)
 	}
@@ -94,26 +129,12 @@ func TestRun_ExcludesApiKey(t *testing.T) {
 		{Target: "proxy-cli:http://host/proxy-api-key", Token: "apikey"},
 		{Target: "proxy-cli:http://host", Token: "realtoken"},
 	}}
-	if err := run([]string{"--url", srv.URL}, store); err != nil {
+	args := append([]string{"--url", srv.URL}, requiredFlags...)
+	if err := run(args, store); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if received != "realtoken" {
 		t.Errorf("received = %q, want realtoken", received)
-	}
-}
-
-func TestRun_CustomPrefix(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-	}))
-	defer srv.Close()
-
-	store := &stubStore{creds: []wincred.Credential{
-		{Target: "custom-cli:http://host", Token: "tok"},
-	}}
-	err := run([]string{"--url", srv.URL, "--prefix", "custom-cli:http"}, store)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

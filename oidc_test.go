@@ -29,7 +29,7 @@ func TestOIDCClient_Exchange_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	result, err := NewOIDCClient(srv.URL, "test-client").Exchange("old-refresh")
+	result, err := NewOIDCClient().Exchange(srv.URL, "test-client", "old-refresh")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestOIDCClient_Exchange_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, err := NewOIDCClient(srv.URL, "test-client").Exchange("bad-token")
+	_, err := NewOIDCClient().Exchange(srv.URL, "test-client", "bad-token")
 	if err == nil {
 		t.Fatal("expected error for HTTP 401")
 	}
@@ -64,7 +64,7 @@ func TestOIDCClient_Exchange_EmptyAccessToken(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, err := NewOIDCClient(srv.URL, "test-client").Exchange("some-token")
+	_, err := NewOIDCClient().Exchange(srv.URL, "test-client", "some-token")
 	if err == nil {
 		t.Fatal("expected error for missing access_token")
 	}
@@ -77,7 +77,7 @@ func TestOIDCClient_Exchange_DefaultExpiry(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	result, err := NewOIDCClient(srv.URL, "cid").Exchange("rt")
+	result, err := NewOIDCClient().Exchange(srv.URL, "cid", "rt")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

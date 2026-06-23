@@ -16,14 +16,14 @@ type mockSupervisor struct {
 	statusResp ProxyStatus
 }
 
-func (m *mockSupervisor) UpdateToken(_ string) error { return m.updateErr }
-func (m *mockSupervisor) Status() ProxyStatus        { return m.statusResp }
+func (m *mockSupervisor) UpdateToken(_, _, _ string) error { return m.updateErr }
+func (m *mockSupervisor) Status() ProxyStatus              { return m.statusResp }
 
 func TestAPI_PostToken_Success(t *testing.T) {
 	api := newAPI(&mockSupervisor{})
 
 	req := httptest.NewRequest(http.MethodPost, "/token",
-		strings.NewReader("token=my-refresh-token"))
+		strings.NewReader("endpoint=https://oidc.example.com/token&client_id=my-client&token=my-refresh-token"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 
@@ -34,11 +34,41 @@ func TestAPI_PostToken_Success(t *testing.T) {
 	}
 }
 
-func TestAPI_PostToken_MissingField(t *testing.T) {
+func TestAPI_PostToken_MissingToken(t *testing.T) {
 	api := newAPI(&mockSupervisor{})
 
 	req := httptest.NewRequest(http.MethodPost, "/token",
-		strings.NewReader(""))
+		strings.NewReader("endpoint=https://oidc.example.com/token&client_id=my-client"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	api.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", rec.Code)
+	}
+}
+
+func TestAPI_PostToken_MissingClientID(t *testing.T) {
+	api := newAPI(&mockSupervisor{})
+
+	req := httptest.NewRequest(http.MethodPost, "/token",
+		strings.NewReader("endpoint=https://oidc.example.com/token&token=my-refresh-token"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	api.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", rec.Code)
+	}
+}
+
+func TestAPI_PostToken_MissingEndpoint(t *testing.T) {
+	api := newAPI(&mockSupervisor{})
+
+	req := httptest.NewRequest(http.MethodPost, "/token",
+		strings.NewReader("client_id=my-client&token=my-refresh-token"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 
@@ -53,7 +83,7 @@ func TestAPI_PostToken_InvalidToken(t *testing.T) {
 	api := newAPI(&mockSupervisor{updateErr: errors.New("oidc exchange: HTTP 401")})
 
 	req := httptest.NewRequest(http.MethodPost, "/token",
-		strings.NewReader("token=bad"))
+		strings.NewReader("endpoint=https://oidc.example.com/token&client_id=my-client&token=bad"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 

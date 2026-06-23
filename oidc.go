@@ -25,31 +25,26 @@ type TokenResult struct {
 	ExpiresAt    time.Time
 }
 
-// OIDCClient exchanges refresh tokens for access tokens.
+// OIDCClient performs refresh-token grants against any OIDC endpoint.
 type OIDCClient struct {
-	endpoint string
-	clientID string
-	http     *http.Client
+	http *http.Client
 }
 
-// NewOIDCClient returns a new client for the given OIDC token endpoint.
-func NewOIDCClient(endpoint, clientID string) *OIDCClient {
-	return &OIDCClient{
-		endpoint: endpoint,
-		clientID: clientID,
-		http:     &http.Client{Timeout: 15 * time.Second},
-	}
+// NewOIDCClient returns a reusable OIDC client.
+func NewOIDCClient() *OIDCClient {
+	return &OIDCClient{http: &http.Client{Timeout: 15 * time.Second}}
 }
 
-// Exchange performs a refresh-token grant and returns the new tokens.
-func (c *OIDCClient) Exchange(refreshToken string) (*TokenResult, error) {
+// Exchange performs a refresh-token grant against endpoint and returns new tokens.
+// clientID identifies the OAuth 2.0 application to the OIDC server.
+func (c *OIDCClient) Exchange(endpoint, clientID, refreshToken string) (*TokenResult, error) {
 	body := url.Values{
 		"grant_type":    {"refresh_token"},
-		"client_id":     {c.clientID},
+		"client_id":     {clientID},
 		"refresh_token": {refreshToken},
 	}
 	resp, err := c.http.Post(
-		c.endpoint,
+		endpoint,
 		"application/x-www-form-urlencoded",
 		strings.NewReader(body.Encode()),
 	)

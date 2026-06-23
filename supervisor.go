@@ -31,6 +31,8 @@ type Supervisor struct {
 	reverseProxy *httputil.ReverseProxy
 
 	mu           sync.RWMutex
+	oidcEndpoint string
+	clientID     string
 	accessToken  string
 	refreshToken string
 	tokenResult  *TokenResult
@@ -39,7 +41,7 @@ type Supervisor struct {
 	stopped      bool
 }
 
-// newSupervisor constructs a Supervisor. Call start or UpdateToken to activate.
+// newSupervisor constructs a Supervisor. Call UpdateToken to activate.
 func newSupervisor(cfg *Config, proxyPort string) (*Supervisor, error) {
 	port, _ := strconv.Atoi(proxyPort)
 	if port == 0 {
@@ -52,8 +54,8 @@ func newSupervisor(cfg *Config, proxyPort string) (*Supervisor, error) {
 	}
 
 	s := &Supervisor{
-		cfg:       cfg,
-		oidc:      NewOIDCClient(cfg.OIDC.Endpoint, cfg.OIDC.ClientID),
+		cfg:      cfg,
+		oidc:      NewOIDCClient(),
 		proxyPort: port,
 		upstream:  upstream,
 		stopCh:    make(chan struct{}),
@@ -89,35 +91,15 @@ func (s *Supervisor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.reverseProxy.ServeHTTP(w, r)
 }
 
-// start exchanges refreshToken and activates the proxy.
-func (s *Supervisor) start(refreshToken string) error {
-	tr, err := s.oidc.Exchange(refreshToken)
-	if err != nil {
-		return fmt.Errorf("supervisor start: %w", err)
-	}
-	s.mu.Lock()
-	s.setToken(tr, refreshToken)
-	first := s.startedAt.IsZero()
-	if first {
-		s.startedAt = time.Now()
-	}
-	s.mu.Unlock()
-	if first {
-		go s.rotationLoop()
-	}
-	log.Printf("supervisor: proxy active → %s", s.upstream)
-	return nil
-}
-
 // UpdateToken validates a new refresh token and hot-swaps the access token
 // with zero downtime. Also starts the rotation loop on first call.
-func (s *Supervisor) UpdateToken(refreshToken string) error {
-	tr, err := s.oidc.Exchange(refreshToken)
+func (s *Supervisor) UpdateToken(endpoint, clientID, refreshToken string) error {
+	tr, err := s.oidc.Exchange(endpoint, clientID, refreshToken)
 	if err != nil {
 		return fmt.Errorf("token update: %w", err)
 	}
 	s.mu.Lock()
-	s.setToken(tr, refreshToken)
+	s.setToken(tr, endpoint, clientID, refreshToken)
 	first := s.startedAt.IsZero()
 	if first {
 		s.startedAt = time.Now()
@@ -159,10 +141,12 @@ func (s *Supervisor) stop() {
 	close(s.stopCh)
 }
 
-// setToken atomically updates the access token and token result.
+// setToken atomically updates the OIDC credentials and access token.
 // Must be called with s.mu held for writing.
-func (s *Supervisor) setToken(tr *TokenResult, refreshToken string) {
+func (s *Supervisor) setToken(tr *TokenResult, endpoint, clientID, refreshToken string) {
 	s.accessToken = tr.AccessToken
+	s.oidcEndpoint = endpoint
+	s.clientID = clientID
 	s.tokenResult = tr
 	if tr.RefreshToken != "" {
 		s.refreshToken = tr.RefreshToken
@@ -187,16 +171,18 @@ func (s *Supervisor) rotationLoop() {
 
 func (s *Supervisor) rotate() {
 	s.mu.RLock()
+	ep := s.oidcEndpoint
+	cid := s.clientID
 	rt := s.refreshToken
 	s.mu.RUnlock()
 
-	tr, err := s.oidc.Exchange(rt)
+	tr, err := s.oidc.Exchange(ep, cid, rt)
 	if err != nil {
 		log.Printf("supervisor: token rotation failed: %v", err)
 		return
 	}
 	s.mu.Lock()
-	s.setToken(tr, rt)
+	s.setToken(tr, ep, cid, rt)
 	s.mu.Unlock()
 	log.Println("supervisor: token rotated successfully")
 }
