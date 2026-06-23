@@ -1,0 +1,43 @@
+# ── Build outputs ─────────────────────────────────────────────────────────────
+# Compiled Go binaries (build with: go build ./cmd/...)
+*.exe
+*.exe~
+# Extracted proxy binary (unpacked from archive at build time)
+proxy
+
+# ── Archives ──────────────────────────────────────────────────────────────────
+*.tar.gz
+*.zip
+*.tgz
+
+# ── Secrets & tokens ──────────────────────────────────────────────────────────
+# Never commit tokens or credentials
+.token-run
+*.token
+*.key
+*.pem
+*.env
+
+# ── Local configuration ───────────────────────────────────────────────────────
+# Copy config.example.yaml → config.yaml and fill in your values
+config.yaml
+
+# ── Go toolchain ──────────────────────────────────────────────────────────────
+vendor/
+
+# ── OS / editor noise ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ── Test & coverage artefacts ─────────────────────────────────────────────────
+coverage.out
+coverage.html
+*.test
+
+# ── MCP / tooling ─────────────────────────────────────────────────────────────
+.playwright-mcp/

@@ -1,0 +1,10 @@
+oidc:
+  endpoint: "https://your-oidc-server/oauth2/token"
+  client_id: "your-client-id"
+
+proxy:
+  port: 7655
+  upstream_url: "https://your-upstream-llm-api"  # base URL injected with Bearer token
+  # token_env: PROXY_OIDC_TOKEN                  # env var the binary reads (if using bin mode)
+  # bin: /proxy                                  # optional: path to a proxy binary
+  # start_args: "proxy start --headless"         # optional: args for the binary
