@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 )
 
@@ -54,7 +54,7 @@ func (a *API) handlePostToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := a.sup.UpdateToken(endpoint, clientID, token); err != nil {
-		log.Printf("POST /token: %v", err)
+		slog.Error("POST /token", "err", err)
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
@@ -71,7 +71,7 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	if err := json.NewEncoder(w).Encode(v); err != nil {
-		log.Printf("writeJSON: %v", err)
+		slog.Error("writeJSON encode", "err", err)
 	}
 }
 

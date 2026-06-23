@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,9 +12,17 @@ import (
 )
 
 func main() {
+	levelStr := envOrDefault("LOG_LEVEL", "INFO")
+	var level slog.Level
+	if err := level.UnmarshalText([]byte(levelStr)); err != nil {
+		level = slog.LevelInfo
+	}
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level})))
+
 	cfg, err := LoadConfig("/config.yaml")
 	if err != nil {
-		log.Fatalf("config: %v", err)
+		slog.Error("config", "err", err)
+		os.Exit(1)
 	}
 
 	proxyPort := envOrDefault("PROXY_PORT", fmt.Sprintf("%d", cfg.Proxy.Port))
@@ -22,10 +30,11 @@ func main() {
 
 	sup, err := newSupervisor(cfg, proxyPort)
 	if err != nil {
-		log.Fatalf("supervisor: %v", err)
+		slog.Error("supervisor init", "err", err)
+		os.Exit(1)
 	}
 
-	log.Println("startup: waiting for POST /token to activate the proxy")
+	slog.Info("startup: waiting for POST /token to activate the proxy")
 
 	// Proxy server — forwards requests to upstream with injected token.
 	proxySrv := &http.Server{
@@ -40,16 +49,18 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("proxy listening on :%s → %s", proxyPort, cfg.Proxy.UpstreamURL)
+		slog.Info("proxy listening", "port", proxyPort, "upstream", cfg.Proxy.UpstreamURL)
 		if err := proxySrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("proxy server: %v", err)
+			slog.Error("proxy server", "err", err)
+			os.Exit(1)
 		}
 	}()
 
 	go func() {
-		log.Printf("management API listening on :%s", mgmtPort)
+		slog.Info("management API listening", "port", mgmtPort)
 		if err := mgmtSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("api: %v", err)
+			slog.Error("api server", "err", err)
+			os.Exit(1)
 		}
 	}()
 
@@ -57,13 +68,13 @@ func main() {
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 	<-quit
 
-	log.Println("shutting down...")
+	slog.Info("shutting down...")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	proxySrv.Shutdown(ctx) //nolint:errcheck
 	mgmtSrv.Shutdown(ctx)  //nolint:errcheck
 	sup.stop()
-	log.Println("done")
+	slog.Info("done")
 }
 
 func envOrDefault(key, def string) string {

@@ -49,6 +49,16 @@ proxy:
   upstream_url: "https://your-upstream-llm-api"
 ```
 
+### Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PROXY_PORT` | value from `config.yaml` | Override the proxy listen port |
+| `MGMT_PORT` | `7656` | Override the management API listen port |
+| `LOG_LEVEL` | `INFO` | Log verbosity: `DEBUG`, `INFO`, `WARN`, `ERROR` |
+
+Logs are emitted as JSON to stdout. Set `LOG_LEVEL=DEBUG` to log every forwarded request and response status.
+
 ## Tools
 
 ### `push-token` — extract and push a token to a running container
@@ -74,6 +84,14 @@ Flags:
 # Remote container
 .\push-token.exe -prefix "my-cli:http" -url http://my-server:7656/token
 ```
+
+If you're unsure which `-prefix` to use, list your stored credentials:
+
+```powershell
+cmdkey /list
+```
+
+Use the part of the target name before the first `:` as your prefix.
 
 ### `get-token` — extract and save a token to a file
 

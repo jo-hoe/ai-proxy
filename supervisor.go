@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -71,7 +71,7 @@ func newSupervisor(cfg *Config, proxyPort string) (*Supervisor, error) {
 // buildReverseProxy creates a reverse proxy that rewrites the host and injects
 // the current access token on every request.
 func (s *Supervisor) buildReverseProxy() *httputil.ReverseProxy {
-	return &httputil.ReverseProxy{
+	rp := &httputil.ReverseProxy{
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.SetURL(s.upstream)
 			pr.Out.Host = s.upstream.Host
@@ -79,8 +79,26 @@ func (s *Supervisor) buildReverseProxy() *httputil.ReverseProxy {
 			token := s.accessToken
 			s.mu.RUnlock()
 			pr.Out.Header.Set("Authorization", "Bearer "+token)
+			slog.Debug("proxy request",
+				"method", pr.In.Method,
+				"path", pr.In.URL.Path,
+				"upstream", pr.Out.URL.String(),
+			)
 		},
 	}
+	rp.ModifyResponse = func(resp *http.Response) error {
+		slog.Debug("proxy response",
+			"method", resp.Request.Method,
+			"path", resp.Request.URL.Path,
+			"status", resp.StatusCode,
+		)
+		return nil
+	}
+	rp.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		slog.Error("proxy error", "method", r.Method, "path", r.URL.Path, "err", err)
+		http.Error(w, `{"error":"upstream request failed"}`, http.StatusBadGateway)
+	}
+	return rp
 }
 
 // ServeHTTP implements http.Handler — the supervisor is the proxy.
@@ -89,6 +107,7 @@ func (s *Supervisor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	running := s.accessToken != ""
 	s.mu.RUnlock()
 	if !running {
+		slog.Warn("proxy not ready: no token", "method", r.Method, "path", r.URL.Path)
 		http.Error(w, `{"error":"proxy not ready: no token"}`, http.StatusServiceUnavailable)
 		return
 	}
@@ -112,7 +131,7 @@ func (s *Supervisor) UpdateToken(endpoint, clientID, refreshToken string) error 
 	if first {
 		go s.rotationLoop()
 	}
-	log.Println("supervisor: token updated")
+	slog.Info("supervisor: token updated", "expires_at", tr.ExpiresAt)
 	return nil
 }
 
@@ -182,11 +201,11 @@ func (s *Supervisor) rotate() {
 
 	tr, err := s.oidc.Exchange(ep, cid, rt)
 	if err != nil {
-		log.Printf("supervisor: token rotation failed: %v", err)
+		slog.Error("supervisor: token rotation failed", "err", err)
 		return
 	}
 	s.mu.Lock()
 	s.setToken(tr, ep, cid, rt)
 	s.mu.Unlock()
-	log.Println("supervisor: token rotated successfully")
+	slog.Info("supervisor: token rotated", "expires_at", tr.ExpiresAt)
 }
