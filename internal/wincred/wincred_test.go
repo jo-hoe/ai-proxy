@@ -76,3 +76,61 @@ func TestMockStore_FindByPrefix(t *testing.T) {
 		t.Errorf("token = %q, want mytoken", got[0].Token)
 	}
 }
+
+func TestParseTarget_Valid(t *testing.T) {
+	meta, err := wincred.ParseTarget("hai-cli:https://auth.example.com/bdd1034d-faa4-41f5")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if meta.BaseURL != "https://auth.example.com" {
+		t.Errorf("BaseURL = %q, want https://auth.example.com", meta.BaseURL)
+	}
+	if meta.ClientID != "bdd1034d-faa4-41f5" {
+		t.Errorf("ClientID = %q, want bdd1034d-faa4-41f5", meta.ClientID)
+	}
+}
+
+func TestParseTarget_DeepPath(t *testing.T) {
+	meta, err := wincred.ParseTarget("proxy-cli:https://auth.example.com/path/to/client-id")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if meta.BaseURL != "https://auth.example.com/path/to" {
+		t.Errorf("BaseURL = %q", meta.BaseURL)
+	}
+	if meta.ClientID != "client-id" {
+		t.Errorf("ClientID = %q", meta.ClientID)
+	}
+}
+
+func TestParseTarget_NoColon(t *testing.T) {
+	_, err := wincred.ParseTarget("nocolon")
+	if err == nil {
+		t.Fatal("expected error for missing colon")
+	}
+}
+
+func TestParseTarget_NoSlash(t *testing.T) {
+	_, err := wincred.ParseTarget("prefix:noslash")
+	if err == nil {
+		t.Fatal("expected error for missing slash")
+	}
+}
+
+func TestTokenEndpoint(t *testing.T) {
+	meta := wincred.OIDCMeta{BaseURL: "https://auth.example.com"}
+	got := meta.TokenEndpoint("oauth2/token")
+	want := "https://auth.example.com/oauth2/token"
+	if got != want {
+		t.Errorf("TokenEndpoint = %q, want %q", got, want)
+	}
+}
+
+func TestTokenEndpoint_TrailingSlash(t *testing.T) {
+	meta := wincred.OIDCMeta{BaseURL: "https://auth.example.com/"}
+	got := meta.TokenEndpoint("/oauth2/token")
+	want := "https://auth.example.com/oauth2/token"
+	if got != want {
+		t.Errorf("TokenEndpoint = %q, want %q", got, want)
+	}
+}

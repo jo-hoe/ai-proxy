@@ -80,18 +80,23 @@ Flags:
 ### `push-token` — extract and push a token to a running container
 
 Reads a refresh token from Windows Credential Manager and POSTs it to the management
-API. Works for both initial provisioning (tokenless container start) and token rotation.
+API. The OIDC endpoint and client ID are parsed directly from the credential target
+(format: `<prefix>:<base_url>/<client_id>`), so no extra flags are needed for them.
 
 ```
 push-token.exe [flags]
 
 Flags:
-  -url     string   management API token endpoint  (default: http://localhost:7656/token)
-  -prefix  string   credential target prefix  (default: proxy-cli:http)
-  -exclude string   comma-separated substrings to exclude  (default: proxy-api-key)
+  -url         string   management API token endpoint  (default: http://localhost:7656/token)
+  -prefix      string   credential target prefix  (default: proxy-cli:http)
+  -exclude     string   comma-separated substrings to exclude  (default: proxy-api-key)
+  -token-path  string   OIDC token path appended to the base URL  (default: oauth2/token)
 ```
 
 ```powershell
+# Local container
+.\push-token.exe -prefix "my-cli:http"
+
 # Remote container
 .\push-token.exe -prefix "my-cli:http" -url http://my-server:7656/token
 ```

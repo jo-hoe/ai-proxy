@@ -11,14 +11,6 @@ import (
 	"github.com/jo-hoe/ai-proxy/internal/wincred"
 )
 
-const testEndpoint = "https://oidc.example.com/token"
-const testClientID = "my-client"
-
-var requiredFlags = []string{
-	"--endpoint", testEndpoint,
-	"--client-id", testClientID,
-}
-
 type stubStore struct {
 	creds []wincred.Credential
 	err   error
@@ -27,6 +19,9 @@ type stubStore struct {
 func (s *stubStore) FindByPrefix(_ string) ([]wincred.Credential, error) {
 	return s.creds, s.err
 }
+
+// validTarget encodes a base URL and client_id in the credential target format.
+const validTarget = "proxy-cli:https://auth.example.com/my-client-id"
 
 func TestRun_PostsAllFields(t *testing.T) {
 	var gotEndpoint, gotClientID, gotToken string
@@ -41,48 +36,51 @@ func TestRun_PostsAllFields(t *testing.T) {
 	defer srv.Close()
 
 	store := &stubStore{creds: []wincred.Credential{
-		{Target: "proxy-cli:http://host", Token: "mytoken"},
+		{Target: validTarget, Token: "mytoken"},
 	}}
-	args := append([]string{"--url", srv.URL}, requiredFlags...)
-	if err := run(args, store); err != nil {
+	if err := run([]string{"--url", srv.URL}, store); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if gotEndpoint != testEndpoint {
-		t.Errorf("endpoint = %q, want %q", gotEndpoint, testEndpoint)
+	if gotEndpoint != "https://auth.example.com/oauth2/token" {
+		t.Errorf("endpoint = %q", gotEndpoint)
 	}
-	if gotClientID != testClientID {
-		t.Errorf("client_id = %q, want %q", gotClientID, testClientID)
+	if gotClientID != "my-client-id" {
+		t.Errorf("client_id = %q", gotClientID)
 	}
 	if gotToken != "mytoken" {
-		t.Errorf("token = %q, want mytoken", gotToken)
+		t.Errorf("token = %q", gotToken)
 	}
 }
 
-func TestRun_MissingEndpoint(t *testing.T) {
-	err := run([]string{"--client-id", testClientID}, &stubStore{})
-	if err == nil || !strings.Contains(err.Error(), "-endpoint") {
-		t.Errorf("expected -endpoint error, got: %v", err)
-	}
-}
+func TestRun_CustomTokenPath(t *testing.T) {
+	var gotEndpoint string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		gotEndpoint = r.FormValue("endpoint")
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	}))
+	defer srv.Close()
 
-func TestRun_MissingClientID(t *testing.T) {
-	err := run([]string{"--endpoint", testEndpoint}, &stubStore{})
-	if err == nil || !strings.Contains(err.Error(), "-client-id") {
-		t.Errorf("expected -client-id error, got: %v", err)
+	store := &stubStore{creds: []wincred.Credential{
+		{Target: validTarget, Token: "tok"},
+	}}
+	if err := run([]string{"--url", srv.URL, "--token-path", "v1/token"}, store); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotEndpoint != "https://auth.example.com/v1/token" {
+		t.Errorf("endpoint = %q, want https://auth.example.com/v1/token", gotEndpoint)
 	}
 }
 
 func TestRun_NoCredentials(t *testing.T) {
-	args := append([]string{"--url", "http://unused"}, requiredFlags...)
-	err := run(args, &stubStore{})
+	err := run([]string{"--url", "http://unused"}, &stubStore{})
 	if err == nil || !strings.Contains(err.Error(), "no credentials found") {
 		t.Errorf("expected 'no credentials found', got: %v", err)
 	}
 }
 
 func TestRun_StoreError(t *testing.T) {
-	args := append([]string{"--url", "http://unused"}, requiredFlags...)
-	err := run(args, &stubStore{err: errors.New("access denied")})
+	err := run([]string{"--url", "http://unused"}, &stubStore{err: errors.New("access denied")})
 	if err == nil || !strings.Contains(err.Error(), "credential lookup") {
 		t.Errorf("expected 'credential lookup', got: %v", err)
 	}
@@ -90,10 +88,9 @@ func TestRun_StoreError(t *testing.T) {
 
 func TestRun_EmptyToken(t *testing.T) {
 	store := &stubStore{creds: []wincred.Credential{
-		{Target: "proxy-cli:http://host", Token: ""},
+		{Target: validTarget, Token: ""},
 	}}
-	args := append([]string{"--url", "http://unused"}, requiredFlags...)
-	err := run(args, store)
+	err := run([]string{"--url", "http://unused"}, store)
 	if err == nil || !strings.Contains(err.Error(), "empty token") {
 		t.Errorf("expected 'empty token', got: %v", err)
 	}
@@ -107,10 +104,9 @@ func TestRun_APIError(t *testing.T) {
 	defer srv.Close()
 
 	store := &stubStore{creds: []wincred.Credential{
-		{Target: "proxy-cli:http://host", Token: "badtoken"},
+		{Target: validTarget, Token: "badtoken"},
 	}}
-	args := append([]string{"--url", srv.URL}, requiredFlags...)
-	err := run(args, store)
+	err := run([]string{"--url", srv.URL}, store)
 	if err == nil || !strings.Contains(err.Error(), "HTTP 422") {
 		t.Errorf("expected HTTP 422 error, got: %v", err)
 	}
@@ -126,11 +122,10 @@ func TestRun_ExcludesApiKey(t *testing.T) {
 	defer srv.Close()
 
 	store := &stubStore{creds: []wincred.Credential{
-		{Target: "proxy-cli:http://host/proxy-api-key", Token: "apikey"},
-		{Target: "proxy-cli:http://host", Token: "realtoken"},
+		{Target: "proxy-cli:https://auth.example.com/proxy-api-key", Token: "apikey"},
+		{Target: validTarget, Token: "realtoken"},
 	}}
-	args := append([]string{"--url", srv.URL}, requiredFlags...)
-	if err := run(args, store); err != nil {
+	if err := run([]string{"--url", srv.URL}, store); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if received != "realtoken" {
