@@ -125,6 +125,51 @@ func TestAPI_GetStatus_Running(t *testing.T) {
 	}
 }
 
+func TestAPI_GetStatus_RotationError(t *testing.T) {
+	api := newAPI(&mockSupervisor{
+		statusResp: ProxyStatus{
+			Running:       true,
+			RotationError: "oidc exchange: HTTP 401: unauthorized",
+			UptimeSeconds: 10,
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/status", nil)
+	rec := httptest.NewRecorder()
+
+	api.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("status = %d, want 200", rec.Code)
+	}
+	var body ProxyStatus
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if body.RotationError == "" {
+		t.Error("rotation_error should be set")
+	}
+}
+
+func TestAPI_GetStatus_NoRotationError(t *testing.T) {
+	api := newAPI(&mockSupervisor{
+		statusResp: ProxyStatus{Running: true, UptimeSeconds: 10},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/status", nil)
+	rec := httptest.NewRecorder()
+
+	api.ServeHTTP(rec, req)
+
+	var body map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if _, ok := body["rotation_error"]; ok {
+		t.Error("rotation_error should be absent when healthy (omitempty)")
+	}
+}
+
 func TestAPI_GetStatus_NotRunning(t *testing.T) {
 	api := newAPI(&mockSupervisor{statusResp: ProxyStatus{Running: false}})
 

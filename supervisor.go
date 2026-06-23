@@ -18,7 +18,9 @@ type ProxyStatus struct {
 	Running         bool      `json:"running"`
 	TokenExpiresAt  time.Time `json:"token_expires_at,omitempty"`
 	LastRefreshedAt time.Time `json:"last_refreshed_at,omitempty"`
+	LastRotatedAt   time.Time `json:"last_rotated_at,omitempty"`
 	UptimeSeconds   float64   `json:"uptime_seconds"`
+	RotationError   string    `json:"rotation_error,omitempty"`
 }
 
 // Supervisor manages OIDC token rotation and proxies requests to the upstream
@@ -39,6 +41,9 @@ type Supervisor struct {
 	startedAt    time.Time
 	stopCh       chan struct{}
 	stopped      bool
+
+	lastRotationErr string
+	lastRotationAt  time.Time
 }
 
 // newSupervisor constructs a Supervisor. Call UpdateToken to activate.
@@ -87,6 +92,12 @@ func (s *Supervisor) buildReverseProxy() *httputil.ReverseProxy {
 		},
 	}
 	rp.ModifyResponse = func(resp *http.Response) error {
+		if resp.StatusCode == http.StatusUnauthorized {
+			slog.Warn("upstream returned 401 — token may be expired or invalid",
+				"method", resp.Request.Method,
+				"path", resp.Request.URL.Path,
+			)
+		}
 		slog.Debug("proxy response",
 			"method", resp.Request.Method,
 			"path", resp.Request.URL.Path,
@@ -149,6 +160,8 @@ func (s *Supervisor) Status() ProxyStatus {
 	if !s.startedAt.IsZero() {
 		st.UptimeSeconds = time.Since(s.startedAt).Seconds()
 	}
+	st.RotationError = s.lastRotationErr
+	st.LastRotatedAt = s.lastRotationAt
 	return st
 }
 
@@ -202,10 +215,15 @@ func (s *Supervisor) rotate() {
 	tr, err := s.oidc.Exchange(ep, cid, rt)
 	if err != nil {
 		slog.Error("supervisor: token rotation failed", "err", err)
+		s.mu.Lock()
+		s.lastRotationErr = err.Error()
+		s.mu.Unlock()
 		return
 	}
 	s.mu.Lock()
 	s.setToken(tr, ep, cid, rt)
+	s.lastRotationErr = ""
+	s.lastRotationAt = time.Now()
 	s.mu.Unlock()
 	slog.Info("supervisor: token rotated", "expires_at", tr.ExpiresAt)
 }
