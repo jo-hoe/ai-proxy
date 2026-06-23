@@ -48,6 +48,10 @@ func newSupervisor(cfg *Config, proxyPort string) (*Supervisor, error) {
 		port = cfg.Proxy.Port
 	}
 
+	if cfg.Proxy.UpstreamURL == "" {
+		return nil, fmt.Errorf("proxy.upstream_url is required in config.yaml")
+	}
+
 	upstream, err := url.Parse(cfg.Proxy.UpstreamURL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid proxy.upstream_url %q: %w", cfg.Proxy.UpstreamURL, err)
