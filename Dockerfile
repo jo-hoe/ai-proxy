@@ -14,9 +14,11 @@ RUN apk add --no-cache ca-certificates
 COPY --from=builder /src/mgmt /mgmt
 RUN chmod +x /mgmt
 
-COPY config.yaml /config.yaml
+# Ship a placeholder config. Override at runtime by mounting your own:
+#   docker run -v /path/to/config.yaml:/config.yaml:ro ...
+COPY config.example.yaml /config.yaml
 
-# PROXY_PORT: external proxy port  (default: from config.yaml)
+# PROXY_PORT: external proxy port  (default: from config.yaml proxy.port)
 # MGMT_PORT:  management API port  (default: 7656)
 ENV PROXY_PORT="" MGMT_PORT=""
 

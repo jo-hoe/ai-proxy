@@ -3,7 +3,7 @@ package wincred_test
 import (
 	"testing"
 
-	"github.com/oidc-proxy/oidc-proxy/internal/wincred"
+	"github.com/jo-hoe/ai-proxy/internal/wincred"
 )
 
 // mockStore implements wincred.Store for testing without Win32.

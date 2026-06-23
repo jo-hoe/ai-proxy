@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/oidc-proxy/oidc-proxy/internal/wincred"
+	"github.com/jo-hoe/ai-proxy/internal/wincred"
 )
 
 func main() {

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/oidc-proxy/oidc-proxy/internal/wincred"
+	"github.com/jo-hoe/ai-proxy/internal/wincred"
 )
 
 type stubStore struct {

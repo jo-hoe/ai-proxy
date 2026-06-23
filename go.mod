@@ -1,3 +1,3 @@
-module github.com/oidc-proxy/oidc-proxy
+module github.com/jo-hoe/ai-proxy
 
 go 1.23
