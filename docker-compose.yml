@@ -11,9 +11,3 @@ services:
       MGMT_PORT: "${MGMT_PORT:-7656}"
     volumes:
       - ./config.yaml:/config.yaml:ro
-    secrets:
-      - refresh-token
-
-secrets:
-  refresh-token:
-    file: ${TOKEN_FILE:-.token}

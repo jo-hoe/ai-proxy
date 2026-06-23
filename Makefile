@@ -7,11 +7,10 @@ IMAGE        ?= ghcr.io/jo-hoe/ai-proxy:latest
 CONTAINER    ?= ai-proxy
 PROXY_PORT   ?= 7655
 MGMT_PORT    ?= 7656
-TOKEN_FILE   ?= .token
 PREFIX       ?= proxy-cli:http
 TOKEN_PATH   ?= oauth2/token
 
-.PHONY: help build push up down logs status test vet push-token get-token
+.PHONY: help build up down logs status test vet push-token get-token run-local
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} \
@@ -22,11 +21,8 @@ help: ## Show this help
 build: ## Build the Docker image locally
 	docker build -t $(IMAGE) .
 
-push: build ## Build and push the Docker image to the registry
-	docker push $(IMAGE)
-
-up: ## Start the container via docker compose (requires config.yaml and TOKEN_FILE)
-	TOKEN_FILE=$(TOKEN_FILE) docker compose up -d
+up: ## Start the container via docker compose (requires config.yaml)
+	docker compose up -d
 
 down: ## Stop and remove the container
 	docker compose down
@@ -59,4 +55,4 @@ vet: ## Run go vet
 
 run-local: ## Build and run the container locally (uses local image tag)
 	IMAGE=proxy:latest $(MAKE) build
-	TOKEN_FILE=$(TOKEN_FILE) IMAGE=proxy:latest docker compose up -d
+	IMAGE=proxy:latest docker compose up -d
