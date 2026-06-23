@@ -23,9 +23,6 @@ type OIDCConfig struct {
 type ProxyConfig struct {
 	Port        int
 	UpstreamURL string // upstream LLM API base URL
-	Bin         string // path to the proxy binary (overrides PROXY_BIN env var)
-	StartArgs   []string
-	TokenEnv    string
 }
 
 // LoadConfig reads and parses the YAML config file at path.
@@ -73,49 +70,7 @@ func parseConfig(src string) (*Config, error) {
 
 	cfg.Proxy.UpstreamURL = flat["upstream_url"]
 
-	cfg.Proxy.Bin = flat["bin"]
-
-	if raw, ok := flat["start_args"]; ok && raw != "" {
-		cfg.Proxy.StartArgs = parseArgs(raw)
-	}
-	if len(cfg.Proxy.StartArgs) == 0 {
-		cfg.Proxy.StartArgs = []string{"proxy", "start", "--headless", "--use-keyring=false"}
-	}
-
-	cfg.Proxy.TokenEnv = flat["token_env"]
-	if cfg.Proxy.TokenEnv == "" {
-		cfg.Proxy.TokenEnv = "PROXY_OIDC_TOKEN"
-	}
-
 	return cfg, nil
-}
-
-// parseArgs splits a whitespace-separated argument string into a slice.
-// Quoted tokens (single or double) are preserved as one argument.
-func parseArgs(s string) []string {
-	var args []string
-	var cur strings.Builder
-	inSingle, inDouble := false, false
-
-	for _, ch := range s {
-		switch {
-		case ch == '\'' && !inDouble:
-			inSingle = !inSingle
-		case ch == '"' && !inSingle:
-			inDouble = !inDouble
-		case (ch == ' ' || ch == '\t') && !inSingle && !inDouble:
-			if cur.Len() > 0 {
-				args = append(args, cur.String())
-				cur.Reset()
-			}
-		default:
-			cur.WriteRune(ch)
-		}
-	}
-	if cur.Len() > 0 {
-		args = append(args, cur.String())
-	}
-	return args
 }
 
 func cutKV(line string) (key, value string, ok bool) {

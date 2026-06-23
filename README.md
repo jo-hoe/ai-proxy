@@ -7,11 +7,18 @@
 [![Latest Release](https://img.shields.io/github/v/release/jo-hoe/ai-proxy)](https://github.com/jo-hoe/ai-proxy/releases/latest)
 
 A Docker container that acts as an injecting reverse proxy for OIDC-protected LLM APIs.
-It handles token exchange and rotation automatically — clients connect without credentials.
+It handles token exchange and automatic rotation — clients connect without credentials.
 
 The refresh token is obtained once on the Windows machine where login was completed
 and pushed to the running container via the management API. It is never baked into the
 image or passed as an environment variable.
+
+## How it works
+
+1. The container starts and waits for a token (or reads one from a mounted secret).
+2. `push-token` extracts a refresh token from Windows Credential Manager and POSTs it to the management API.
+3. The container exchanges it for an OIDC access token, then reverse-proxies all incoming requests to `upstream_url` with `Authorization: Bearer <token>` injected.
+4. The token is automatically rotated every 50 minutes with zero downtime.
 
 ## Quick start
 
@@ -21,9 +28,12 @@ go build -o get-token.exe  ./cmd/get-token
 go build -o push-token.exe ./cmd/push-token
 go build -o run.exe        ./cmd/run
 
-# Mount your config, start the container, push the token
+# Start the container with your config mounted
 .\run.exe
-.\push-token.exe
+
+# Push your OIDC refresh token into the running container
+# Adjust -prefix to match your credential manager entries
+.\push-token.exe -prefix "my-cli:http"
 ```
 
 Proxy available at `http://localhost:7655/`
@@ -32,7 +42,7 @@ Management API at `http://localhost:7656/`
 ## Configuration
 
 Copy `config.example.yaml` to `config.yaml` and fill in your values.
-Mount it into the container at runtime — it is **not** baked into the image:
+Mount it at runtime — it is **not** baked into the image:
 
 ```bash
 docker run -v /path/to/config.yaml:/config.yaml:ro ...
@@ -44,14 +54,13 @@ oidc:
   client_id: "your-client-id"
 
 proxy:
-  port: 7655                                    # external proxy port
-  upstream_url: "https://your-upstream-llm-api" # all requests forwarded here with Bearer token injected
-  token_env: PROXY_OIDC_TOKEN                   # env var name the upstream expects (optional)
+  port: 7655
+  upstream_url: "https://your-upstream-llm-api"
 ```
 
 ## Tools
 
-### `get-token` — extract and save a token
+### `get-token` — extract and save a token to a file
 
 Reads a refresh token from Windows Credential Manager and writes it to a file.
 
@@ -64,15 +73,14 @@ Flags:
   -output  string   output file path  (default: .token beside the executable)
 ```
 
-> **Note:** `-prefix` must match the credential target prefix used by the CLI tool
-> that performed login. For example, if credentials are stored as `my-cli:http://...`,
+> **Note:** `-prefix` must match the target prefix your CLI tool uses when storing
+> credentials. For example, if entries are stored as `my-cli:http://...`,
 > pass `-prefix my-cli:http`.
 
 ### `push-token` — extract and push a token to a running container
 
-Reads a refresh token from Windows Credential Manager and POSTs it directly to the
-management API. Works whether the proxy is already running (token rotation) or has
-not yet started (initial provisioning after a tokenless container start).
+Reads a refresh token from Windows Credential Manager and POSTs it to the management
+API. Works for both initial provisioning (tokenless container start) and token rotation.
 
 ```
 push-token.exe [flags]
@@ -84,7 +92,8 @@ Flags:
 ```
 
 ```powershell
-.\push-token.exe -url http://my-server:7656/token
+# Remote container
+.\push-token.exe -prefix "my-cli:http" -url http://my-server:7656/token
 ```
 
 ### `run` — build and start the container
@@ -108,22 +117,27 @@ Flags:
 ## Run on a remote machine
 
 ```bash
-# 1. Save the token to a file
-get-token.exe -output token
+# 1. Pull the pre-built image on the remote machine
+docker pull ghcr.io/jo-hoe/ai-proxy:latest
 
-# 2. Copy image and token to the remote machine
-docker save proxy:latest | ssh user@remote docker load
-scp token user@remote:~/token
+# 2. Run with your config mounted
+docker run -d \
+  --name ai-proxy \
+  -p 7655:7655 \
+  -p 7656:7656 \
+  -v /path/to/config.yaml:/config.yaml:ro \
+  --restart unless-stopped \
+  ghcr.io/jo-hoe/ai-proxy:latest
 
-# 3. On the remote machine
-run.exe -token-file ~/token
+# 3. Push your token from Windows
+push-token.exe -prefix "my-cli:http" -url http://remote-host:7656/token
 ```
 
 ## Management API
 
 | Method | Path | Body | Description |
 |--------|------|------|-------------|
-| `POST` | `/token` | form field `token=<refresh_token>` | Validate token via OIDC exchange and hot-swap with zero downtime |
+| `POST` | `/token` | form field `token=<refresh_token>` | Validate via OIDC exchange and hot-swap the access token |
 | `GET` | `/status` | — | Returns `running`, `token_expires_at`, `last_refreshed_at`, `uptime_seconds` |
 
 ## Docker image
@@ -132,17 +146,6 @@ Pre-built images are published to the GitHub Container Registry on every tagged 
 
 ```bash
 docker pull ghcr.io/jo-hoe/ai-proxy:latest
-```
-
-Run with a config file mounted:
-
-```bash
-docker run -d \
-  --name ai-proxy \
-  -p 7655:7655 \
-  -p 7656:7656 \
-  -v /path/to/config.yaml:/config.yaml:ro \
-  ghcr.io/jo-hoe/ai-proxy:latest
 ```
 
 ## Files
