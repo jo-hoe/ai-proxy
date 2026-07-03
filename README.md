@@ -3,7 +3,6 @@
 [![CI](https://github.com/jo-hoe/ai-proxy/actions/workflows/ci.yml/badge.svg)](https://github.com/jo-hoe/ai-proxy/actions/workflows/ci.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/jo-hoe/ai-proxy)](https://goreportcard.com/report/github.com/jo-hoe/ai-proxy)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/jo-hoe/ai-proxy)](go.mod)
-[![License](https://img.shields.io/github/license/jo-hoe/ai-proxy)](LICENSE)
 [![Latest Release](https://img.shields.io/github/v/release/jo-hoe/ai-proxy)](https://github.com/jo-hoe/ai-proxy/releases/latest)
 
 A Docker container that acts as an injecting reverse proxy for OIDC-protected LLM APIs.
@@ -140,6 +139,7 @@ push-token.exe -prefix "my-cli:http" -url http://remote-host:7656/token
 |--------|------|------|-------------|
 | `POST` | `/token` | form fields: `endpoint`, `client_id`, `token` | Validate via OIDC exchange and hot-swap the access token |
 | `GET` | `/status` | — | Returns `running`, `token_expires_at`, `last_refreshed_at`, `uptime_seconds` |
+| `GET` | `/healthz` | — | Returns `200 ok` when ready, `503 unhealthy` when no token or refresh token is stale |
 
 ## Docker image
 
