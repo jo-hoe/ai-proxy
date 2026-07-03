@@ -12,12 +12,14 @@ import (
 
 // mockSupervisor implements supervisorIface for testing.
 type mockSupervisor struct {
-	updateErr  error
-	statusResp ProxyStatus
+	updateErr   error
+	statusResp  ProxyStatus
+	healthyResp bool
 }
 
 func (m *mockSupervisor) UpdateToken(_, _, _ string) error { return m.updateErr }
 func (m *mockSupervisor) Status() ProxyStatus              { return m.statusResp }
+func (m *mockSupervisor) Healthy() bool                    { return m.healthyResp }
 
 func TestAPI_PostToken_Success(t *testing.T) {
 	api := newAPI(&mockSupervisor{})
@@ -167,6 +169,26 @@ func TestAPI_GetStatus_NoRotationError(t *testing.T) {
 	}
 	if _, ok := body["rotation_error"]; ok {
 		t.Error("rotation_error should be absent when healthy (omitempty)")
+	}
+}
+
+func TestAPI_GetHealthz_Healthy(t *testing.T) {
+	api := newAPI(&mockSupervisor{healthyResp: true})
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	rec := httptest.NewRecorder()
+	api.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("status = %d, want 200", rec.Code)
+	}
+}
+
+func TestAPI_GetHealthz_Unhealthy(t *testing.T) {
+	api := newAPI(&mockSupervisor{healthyResp: false})
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	rec := httptest.NewRecorder()
+	api.ServeHTTP(rec, req)
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Errorf("status = %d, want 503", rec.Code)
 	}
 }
 

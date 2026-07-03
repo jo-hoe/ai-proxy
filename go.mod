@@ -1,3 +1,3 @@
 module github.com/jo-hoe/ai-proxy
 
-go 1.23
+go 1.26

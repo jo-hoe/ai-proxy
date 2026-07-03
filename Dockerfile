@@ -1,5 +1,5 @@
 # Stage 1: build the Go management binary
-FROM golang:1.23-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 WORKDIR /src
 COPY go.mod ./
@@ -7,7 +7,7 @@ COPY *.go ./
 RUN go build -trimpath -ldflags="-s -w" -o mgmt .
 
 # Stage 2: minimal runtime image
-FROM alpine:3.21
+FROM alpine:3.24
 
 RUN apk add --no-cache ca-certificates
 

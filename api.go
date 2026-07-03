@@ -11,6 +11,7 @@ import (
 type supervisorIface interface {
 	UpdateToken(endpoint, clientID, refreshToken string) error
 	Status() ProxyStatus
+	Healthy() bool
 }
 
 // API is the HTTP management server.
@@ -24,6 +25,7 @@ func newAPI(sup supervisorIface) *API {
 	a := &API{mux: http.NewServeMux(), sup: sup}
 	a.mux.HandleFunc("POST /token", a.handlePostToken)
 	a.mux.HandleFunc("GET /status", a.handleGetStatus)
+	a.mux.HandleFunc("GET /healthz", a.handleGetHealthz)
 	return a
 }
 
@@ -64,6 +66,16 @@ func (a *API) handlePostToken(w http.ResponseWriter, r *http.Request) {
 // handleGetStatus returns the current proxy status.
 func (a *API) handleGetStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, a.sup.Status())
+}
+
+// handleGetHealthz returns 200 when the proxy is ready, 503 otherwise.
+// Suitable for Docker/k8s health checks.
+func (a *API) handleGetHealthz(w http.ResponseWriter, r *http.Request) {
+	if !a.sup.Healthy() {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unhealthy"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 // writeJSON encodes v as JSON and writes it with the given status code.

@@ -7,6 +7,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -44,6 +45,7 @@ type Supervisor struct {
 
 	lastRotationErr string
 	lastRotationAt  time.Time
+	tokenStale      bool // set when rotation gets invalid_grant; cleared by UpdateToken
 }
 
 // newSupervisor constructs a Supervisor. Call UpdateToken to activate.
@@ -134,6 +136,8 @@ func (s *Supervisor) UpdateToken(endpoint, clientID, refreshToken string) error 
 	}
 	s.mu.Lock()
 	s.setToken(tr, endpoint, clientID, refreshToken)
+	s.tokenStale = false
+	s.lastRotationErr = ""
 	first := s.startedAt.IsZero()
 	if first {
 		s.startedAt = time.Now()
@@ -146,11 +150,21 @@ func (s *Supervisor) UpdateToken(endpoint, clientID, refreshToken string) error 
 	return nil
 }
 
+// Healthy reports whether the proxy is ready to serve requests.
+// Returns false when no token has been loaded or the refresh token is stale.
+func (s *Supervisor) Healthy() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.accessToken != "" && !s.tokenStale
+}
+
 // Status returns a snapshot of supervisor state.
 func (s *Supervisor) Status() ProxyStatus {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	st := ProxyStatus{Running: s.accessToken != ""}
+	st := ProxyStatus{
+		Running: s.accessToken != "",
+	}
 	if s.tokenResult != nil {
 		st.TokenExpiresAt = s.tokenResult.ExpiresAt
 		st.LastRefreshedAt = s.tokenResult.ExpiresAt.Add(
@@ -192,6 +206,9 @@ func (s *Supervisor) setToken(tr *TokenResult, endpoint, clientID, refreshToken 
 }
 
 // rotationLoop proactively refreshes the token before it expires.
+// When the refresh token becomes invalid (invalid_grant) it marks the token as
+// stale and pauses rotation. Rotation resumes automatically once UpdateToken
+// is called with a fresh token.
 func (s *Supervisor) rotationLoop() {
 	ticker := time.NewTicker(rotationInterval)
 	defer ticker.Stop()
@@ -200,6 +217,13 @@ func (s *Supervisor) rotationLoop() {
 		case <-s.stopCh:
 			return
 		case <-ticker.C:
+			s.mu.RLock()
+			stale := s.tokenStale
+			s.mu.RUnlock()
+			if stale {
+				slog.Warn("supervisor: token is stale — skipping rotation until a new token is pushed via POST /token")
+				continue
+			}
 			s.rotate()
 		}
 	}
@@ -217,6 +241,10 @@ func (s *Supervisor) rotate() {
 		slog.Error("supervisor: token rotation failed", "err", err)
 		s.mu.Lock()
 		s.lastRotationErr = err.Error()
+		if isInvalidGrant(err) {
+			s.tokenStale = true
+			slog.Warn("supervisor: refresh token is invalid or expired — proxy will continue serving with the current access token until a new refresh token is pushed via POST /token")
+		}
 		s.mu.Unlock()
 		return
 	}
@@ -226,4 +254,9 @@ func (s *Supervisor) rotate() {
 	s.lastRotationAt = time.Now()
 	s.mu.Unlock()
 	slog.Info("supervisor: token rotated", "expires_at", tr.ExpiresAt)
+}
+
+// isInvalidGrant reports whether the error is an OIDC invalid_grant response.
+func isInvalidGrant(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "invalid_grant")
 }
