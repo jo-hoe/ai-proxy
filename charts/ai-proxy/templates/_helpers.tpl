@@ -39,3 +39,11 @@ existingSecret or the chart-rendered one.
 {{- printf "%s-token" (include "ai-proxy.fullname" .) -}}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Resolved ServiceAccount name. Uses the explicit serviceAccount.name when
+set, otherwise falls back to the fullname.
+*/}}
+{{- define "ai-proxy.serviceAccountName" -}}
+{{- default (include "ai-proxy.fullname" .) .Values.serviceAccount.name -}}
+{{- end -}}

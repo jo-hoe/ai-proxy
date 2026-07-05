@@ -1,0 +1,50 @@
+{{ template "chart.header" . }}
+{{ template "chart.description" . }}
+
+{{ template "chart.versionBadge" . }}
+{{ template "chart.typeBadge" . }}
+{{ template "chart.appVersionBadge" . }}
+
+## Overview
+
+`ai-proxy` is an OIDC-authenticating reverse proxy for LLM APIs. It exchanges a
+long-lived OIDC refresh token for short-lived access tokens and injects them
+into every upstream request, so downstream clients only need to know a static
+proxy URL — no per-user auth wiring.
+
+The chart supports two modes for supplying the OIDC token:
+
+1. **Mounted Secret** (recommended). Set `oidc.endpoint`, `oidc.clientId`, and
+   `oidc.refreshToken` — or point `oidc.existingSecret` at an existing Secret
+   with keys `oidc-endpoint`, `oidc-client-id`, `refresh-token`. The proxy
+   auto-activates on startup, so image updates require no manual intervention.
+2. **Manual push**. Deploy with no token, then `POST /token` to the management
+   API. Useful when the token isn't available at deploy time.
+
+When `oidc.persistSecret` is true (the default), the proxy also writes rotated
+refresh tokens back into the mounted Secret via the k8s API, so pod restarts
+survive OIDC providers that rotate refresh tokens on each exchange.
+
+## Endpoints
+
+| Port | Purpose |
+|------|---------|
+| 7655 | LLM reverse proxy — downstream clients call this |
+| 7656 | Management API — `POST /token`, `GET /status`, `GET /healthz` |
+
+## Installation
+
+```bash
+helm install ai-proxy oci://ghcr.io/jo-hoe/charts/ai-proxy \
+  --set config.upstream_url=https://api.anthropic.com \
+  --set oidc.endpoint=https://your-idp.example.com/oauth2/token \
+  --set oidc.clientId=your-client-id \
+  --set oidc.refreshToken=your-refresh-token
+```
+
+{{ template "chart.valuesHeader" . }}
+{{ template "chart.valuesTable" . }}
+
+{{ template "chart.sourcesSection" . }}
+
+{{ template "helm-docs.versionFooter" . }}

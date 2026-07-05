@@ -18,3 +18,10 @@ oidc:
   endpoint: ""
   clientId: ""
   refreshToken: ""
+  # Write rotated tokens back to the k8s Secret so pod restarts survive
+  # OIDC provider refresh-token rotation.
+  persistSecret: true
+
+# Required when persistSecret is true. Grants the pod get/patch on its own Secret.
+rbac:
+  enabled: true

@@ -19,7 +19,8 @@ LOCAL_REGISTRY      := localhost:5000
 LOCAL_REGISTRY_HELM := registry.localhost:5000
 
 .PHONY: build up down logs status test vet push-token get-token run-local \
-        start-cluster stop-k3d restart-k3d push-k3d start-k3d upgrade-k3d uninstall-k3d
+        start-cluster stop-k3d restart-k3d push-k3d start-k3d upgrade-k3d uninstall-k3d \
+        generate-helm-docs
 
 ## ── Docker ──────────────────────────────────────────────────────────────────
 
@@ -91,3 +92,6 @@ upgrade-k3d: push-k3d ## Rebuild image and upgrade Helm release
 
 uninstall-k3d: ## Uninstall Helm release from k3d cluster
 	helm uninstall $(IMAGE_NAME)
+
+generate-helm-docs: ## Regenerate chart README.md via helm-docs (Docker)
+	MSYS_NO_PATHCONV=1 docker run --rm --volume "$(CURDIR)/charts:/helm-docs" jnorwood/helm-docs:latest

@@ -1,0 +1,16 @@
+{{- if .Values.rbac.enabled -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "ai-proxy.fullname" . }}-secret-patcher
+  labels:
+    {{- include "ai-proxy.labels" . | nindent 4 }}
+## Tightly scoped: only the single Secret backing the proxy's token, only
+## `get` and `patch`. No list, no watch, no other resources.
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames:
+      - {{ include "ai-proxy.tokenSecretName" . }}
+    verbs: ["get", "patch"]
+{{- end -}}

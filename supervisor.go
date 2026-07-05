@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -13,6 +14,13 @@ import (
 )
 
 const rotationInterval = 50 * time.Minute
+const secretPatchTimeout = 10 * time.Second
+
+// secretPatcher is the subset of *SecretPatcher used by Supervisor. Enables
+// nil safety (nil implementations swallow calls) and test injection.
+type secretPatcher interface {
+	PatchRefreshToken(ctx context.Context, refreshToken string) error
+}
 
 // ProxyStatus is the current state of the supervisor.
 type ProxyStatus struct {
@@ -32,6 +40,7 @@ type Supervisor struct {
 	proxyPort    int
 	upstream     *url.URL
 	reverseProxy *httputil.ReverseProxy
+	patcher      secretPatcher // nil when secret persistence is disabled
 
 	mu           sync.RWMutex
 	oidcEndpoint string
@@ -45,7 +54,8 @@ type Supervisor struct {
 
 	lastRotationErr string
 	lastRotationAt  time.Time
-	tokenStale      bool // set when rotation gets invalid_grant; cleared by UpdateToken
+	tokenStale      bool   // set when rotation gets invalid_grant; cleared by UpdateToken
+	lastPersistedRT string // last refresh token successfully patched into the k8s Secret
 }
 
 // newSupervisor constructs a Supervisor. Call UpdateToken to activate.
@@ -65,11 +75,20 @@ func newSupervisor(cfg *Config, proxyPort string) (*Supervisor, error) {
 	}
 
 	s := &Supervisor{
-		cfg:      cfg,
+		cfg:       cfg,
 		oidc:      NewOIDCClient(),
 		proxyPort: port,
 		upstream:  upstream,
 		stopCh:    make(chan struct{}),
+	}
+	// Optional k8s Secret write-back. NewSecretPatcher returns (nil, nil)
+	// when the feature is disabled or we're not running in a cluster.
+	patcher, err := NewSecretPatcher()
+	if err != nil {
+		slog.Warn("supervisor: secret patcher init failed, persistence disabled", "err", err)
+	} else if patcher != nil {
+		s.patcher = patcher
+		slog.Info("supervisor: k8s Secret persistence enabled", "secret", patcher.secret, "namespace", patcher.namespace)
 	}
 	s.reverseProxy = s.buildReverseProxy()
 	return s, nil
@@ -142,10 +161,13 @@ func (s *Supervisor) UpdateToken(endpoint, clientID, refreshToken string) error 
 	if first {
 		s.startedAt = time.Now()
 	}
+	// Snapshot the RT under the lock; patch outside the lock (network I/O).
+	rtToPersist := s.refreshToken
 	s.mu.Unlock()
 	if first {
 		go s.rotationLoop()
 	}
+	s.persistIfChanged(rtToPersist)
 	slog.Info("supervisor: token updated", "expires_at", tr.ExpiresAt)
 	return nil
 }
@@ -252,8 +274,36 @@ func (s *Supervisor) rotate() {
 	s.setToken(tr, ep, cid, rt)
 	s.lastRotationErr = ""
 	s.lastRotationAt = time.Now()
+	rtToPersist := s.refreshToken
 	s.mu.Unlock()
+	s.persistIfChanged(rtToPersist)
 	slog.Info("supervisor: token rotated", "expires_at", tr.ExpiresAt)
+}
+
+// persistIfChanged patches the k8s Secret when the refresh token differs
+// from the last successfully persisted value. Best-effort: patch failures
+// are logged but don't affect the in-memory token or the rotation loop.
+func (s *Supervisor) persistIfChanged(refreshToken string) {
+	if s.patcher == nil || refreshToken == "" {
+		return
+	}
+	s.mu.RLock()
+	unchanged := refreshToken == s.lastPersistedRT
+	s.mu.RUnlock()
+	if unchanged {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), secretPatchTimeout)
+	defer cancel()
+	if err := s.patcher.PatchRefreshToken(ctx, refreshToken); err != nil {
+		slog.Warn("supervisor: failed to persist refresh token to k8s Secret", "err", err)
+		return
+	}
+	s.mu.Lock()
+	s.lastPersistedRT = refreshToken
+	s.mu.Unlock()
+	slog.Info("supervisor: refresh token persisted to k8s Secret")
 }
 
 // isInvalidGrant reports whether the error is an OIDC invalid_grant response.

@@ -1,49 +1,78 @@
+# -- Override the chart name portion of resource names.
 nameOverride: ""
+# -- Fully override the generated resource names.
 fullnameOverride: ""
 
+# -- Number of proxy replicas.
 replicaCount: 1
 
 image:
+  # -- Container image repository.
   repository: ghcr.io/jo-hoe/ai-proxy
+  # -- Container image tag. Bump alongside chart appVersion.
   tag: v0.4.0
+  # -- Image pull policy. `IfNotPresent` | `Always` | `Never`.
   pullPolicy: IfNotPresent
 
 service:
+  # -- Service type. `ClusterIP` | `LoadBalancer` | `NodePort`.
   type: ClusterIP
-  # Port 7655: the actual LLM reverse-proxy (consumers call this)
+  # -- Port 7655 — the LLM reverse proxy (consumers call this).
   proxyPort: 7655
-  # Port 7656: management API (POST /token to push OIDC creds, GET /status)
+  # -- Port 7656 — management API (POST /token, GET /status).
   mgmtPort: 7656
 
 ingress:
+  # -- Enable Ingress resources for proxy and management endpoints.
   enabled: false
-  # className is optional; leave empty to omit ingressClassName field
+  # -- Ingress class name. Leave empty to omit the field.
   className: ""
-  # Hostnames for the two ingress paths
+  # -- Hostname for the LLM proxy ingress.
   proxyHost: "ai-proxy.example.com"
+  # -- Hostname for the management API ingress.
   mgmtHost: "ai-proxy-mgmt.example.com"
-  # TLS is opt-in. When true, references a Secret you must provision separately
-  # (via cert-manager Certificate, external-secrets, or manual kubectl).
+  # -- Opt-in TLS. When true, references the Secret named in `tlsSecretName`. You must provision the Secret separately (cert-manager, external-secrets, manual).
   tls: false
-  # Custom TLS secret name (defaults to <fullname>-tls when empty)
+  # -- Name of the TLS Secret. Defaults to `<fullname>-tls` when empty.
   tlsSecretName: ""
+  # -- Extra annotations for both ingress resources.
   annotations: {}
 
 config:
-  upstream_url: "" # required — LLM API base URL
+  # -- Required. Base URL of the upstream LLM API to proxy to.
+  upstream_url: ""
 
-# OIDC token — mounted as files at /run/secrets/ so the proxy activates on
-# startup without requiring a manual POST /token. If not provided, the proxy
-# still starts and waits for a token push via the management API.
+# OIDC credentials are mounted at /run/secrets/ so the proxy activates on
+# startup without a manual POST /token. If left unset, the proxy still starts
+# and waits for a token push via the management API.
 oidc:
-  # Point at a pre-existing Secret with keys: oidc-endpoint, oidc-client-id, refresh-token
+  # -- Reference a pre-existing Secret with keys `oidc-endpoint`, `oidc-client-id`, `refresh-token`. Takes precedence over the inline values.
   existingSecret: ""
-  # Or let the chart render a Secret from these values (dev/testing).
+  # -- OIDC token endpoint URL. Only used when `existingSecret` is empty.
   endpoint: ""
+  # -- OAuth client ID. Only used when `existingSecret` is empty.
   clientId: ""
+  # -- Refresh token. Only used when `existingSecret` is empty. For dev/testing only — prefer `existingSecret` in production.
   refreshToken: ""
+  # -- When true, the proxy patches the mounted Secret with the latest refresh token after every rotation, so pod restarts survive across an unlimited number of rotations. Requires `rbac.enabled: true`.
+  persistSecret: true
 
+# RBAC is required only when `oidc.persistSecret` is true. Creates a
+# ServiceAccount, Role, and RoleBinding scoped to `get`/`patch` on the single
+# Secret backing the proxy's token.
+rbac:
+  # -- Create ServiceAccount + Role + RoleBinding. Set to false if your cluster provisions these externally.
+  enabled: true
+
+serviceAccount:
+  # -- Name of the ServiceAccount to use or create. Defaults to the fullname when empty.
+  name: ""
+
+# -- Pod resource requests and limits.
 resources: {}
+# -- Node labels for pod placement.
 nodeSelector: {}
+# -- Tolerations for pod scheduling on tainted nodes.
 tolerations: []
+# -- Node/pod affinity rules.
 affinity: {}
