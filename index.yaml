@@ -2,6 +2,19 @@ apiVersion: v1
 entries:
   ai-proxy:
   - apiVersion: v2
+    appVersion: 0.5.0
+    created: "2026-07-05T19:10:22.336002711Z"
+    description: Helm chart for jo-hoe/ai-proxy — OIDC-auth reverse proxy for LLM
+      APIs.
+    digest: 8f199abcce1db12de506249939be7ad4bdcf77f10976e3247e46ffd4dd7d85cc
+    name: ai-proxy
+    sources:
+    - https://github.com/jo-hoe/ai-proxy
+    type: application
+    urls:
+    - https://github.com/jo-hoe/ai-proxy/releases/download/ai-proxy-0.3.0/ai-proxy-0.3.0.tgz
+    version: 0.3.0
+  - apiVersion: v2
     appVersion: 0.4.0
     created: "2026-07-05T19:02:22.086632266Z"
     description: Helm chart for jo-hoe/ai-proxy — OIDC-auth reverse proxy for LLM
@@ -27,4 +40,4 @@ entries:
     urls:
     - https://github.com/jo-hoe/ai-proxy/releases/download/ai-proxy-0.1.0/ai-proxy-0.1.0.tgz
     version: 0.1.0
-generated: "2026-07-05T19:02:22.086643046Z"
+generated: "2026-07-05T19:10:22.336012862Z"
