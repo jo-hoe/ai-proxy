@@ -55,7 +55,16 @@ spec:
               subPath: config.yaml
               readOnly: true
             - name: token
-              mountPath: /run/secrets
+              mountPath: /run/secrets/oidc-endpoint
+              subPath: oidc-endpoint
+              readOnly: true
+            - name: token
+              mountPath: /run/secrets/oidc-client-id
+              subPath: oidc-client-id
+              readOnly: true
+            - name: token
+              mountPath: /run/secrets/refresh-token
+              subPath: refresh-token
               readOnly: true
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
