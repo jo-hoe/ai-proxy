@@ -26,12 +26,16 @@ const validTarget = "proxy-cli:https://auth.example.com/my-client-id"
 func TestRun_PostsAllFields(t *testing.T) {
 	var gotEndpoint, gotClientID, gotToken string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm()
+		if err := r.ParseForm(); err != nil {
+			t.Errorf("ParseForm: %v", err)
+		}
 		gotEndpoint = r.FormValue("endpoint")
 		gotClientID = r.FormValue("client_id")
 		gotToken = r.FormValue("token")
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+			t.Errorf("encode: %v", err)
+		}
 	}))
 	defer srv.Close()
 
@@ -55,9 +59,13 @@ func TestRun_PostsAllFields(t *testing.T) {
 func TestRun_CustomTokenPath(t *testing.T) {
 	var gotEndpoint string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm()
+		if err := r.ParseForm(); err != nil {
+			t.Errorf("ParseForm: %v", err)
+		}
 		gotEndpoint = r.FormValue("endpoint")
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+			t.Errorf("encode: %v", err)
+		}
 	}))
 	defer srv.Close()
 
@@ -97,9 +105,11 @@ func TestRun_EmptyToken(t *testing.T) {
 }
 
 func TestRun_APIError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		w.Write([]byte(`{"error":"invalid token"}`))
+		if _, err := w.Write([]byte(`{"error":"invalid token"}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
 	}))
 	defer srv.Close()
 
@@ -115,9 +125,13 @@ func TestRun_APIError(t *testing.T) {
 func TestRun_ExcludesApiKey(t *testing.T) {
 	var received string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm()
+		if err := r.ParseForm(); err != nil {
+			t.Errorf("ParseForm: %v", err)
+		}
 		received = r.FormValue("token")
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+			t.Errorf("encode: %v", err)
+		}
 	}))
 	defer srv.Close()
 

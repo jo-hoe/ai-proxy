@@ -51,7 +51,7 @@ func (c *OIDCClient) Exchange(endpoint, clientID, refreshToken string) (*TokenRe
 	if err != nil {
 		return nil, fmt.Errorf("oidc exchange: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<16))
 	if err != nil {

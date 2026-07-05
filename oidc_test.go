@@ -21,11 +21,13 @@ func TestOIDCClient_Exchange_Success(t *testing.T) {
 		assertFormValue(t, r, "refresh_token", "old-refresh")
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		if err := json.NewEncoder(w).Encode(map[string]any{
 			"access_token":  "new-access",
 			"refresh_token": "new-refresh",
 			"expires_in":    3600,
-		})
+		}); err != nil {
+			t.Errorf("encode: %v", err)
+		}
 	}))
 	defer srv.Close()
 
@@ -45,9 +47,11 @@ func TestOIDCClient_Exchange_Success(t *testing.T) {
 }
 
 func TestOIDCClient_Exchange_HTTPError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error":"invalid_grant"}`))
+		if _, err := w.Write([]byte(`{"error":"invalid_grant"}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
 	}))
 	defer srv.Close()
 
@@ -58,9 +62,11 @@ func TestOIDCClient_Exchange_HTTPError(t *testing.T) {
 }
 
 func TestOIDCClient_Exchange_EmptyAccessToken(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"token_type": "bearer"})
+		if err := json.NewEncoder(w).Encode(map[string]any{"token_type": "bearer"}); err != nil {
+			t.Errorf("encode: %v", err)
+		}
 	}))
 	defer srv.Close()
 
@@ -71,9 +77,11 @@ func TestOIDCClient_Exchange_EmptyAccessToken(t *testing.T) {
 }
 
 func TestOIDCClient_Exchange_DefaultExpiry(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"access_token": "tok"})
+		if err := json.NewEncoder(w).Encode(map[string]any{"access_token": "tok"}); err != nil {
+			t.Errorf("encode: %v", err)
+		}
 	}))
 	defer srv.Close()
 

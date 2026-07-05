@@ -77,7 +77,7 @@ func postToken(apiURL, endpoint, clientID, token string) error {
 	if err != nil {
 		return fmt.Errorf("post token to %s: %w", apiURL, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("management API returned HTTP %d: %s", resp.StatusCode, raw)

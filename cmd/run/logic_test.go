@@ -38,7 +38,9 @@ func TestToWindowsPath_Empty(t *testing.T) {
 func TestParseConfigFile_Valid(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "config.yaml")
-	os.WriteFile(f, []byte("proxy:\n  port: 9000\n"), 0600)
+	if err := os.WriteFile(f, []byte("proxy:\n  port: 9000\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
 
 	cfg, err := parseConfigFile(f)
 	if err != nil {
@@ -52,7 +54,9 @@ func TestParseConfigFile_Valid(t *testing.T) {
 func TestParseConfigFile_DefaultPort(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "config.yaml")
-	os.WriteFile(f, []byte("oidc:\n  endpoint: https://x\n"), 0600)
+	if err := os.WriteFile(f, []byte("oidc:\n  endpoint: https://x\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
 
 	cfg, err := parseConfigFile(f)
 	if err != nil {
@@ -86,7 +90,9 @@ func TestExtractFromTar(t *testing.T) {
 func TestExtractFromTar_EntryNotFound(t *testing.T) {
 	dir := t.TempDir()
 	archivePath := filepath.Join(dir, "test.tar.gz")
-	buildTestTar(archivePath, "other", []byte("x"))
+	if err := buildTestTar(archivePath, "other", []byte("x")); err != nil {
+		t.Fatalf("build tar: %v", err)
+	}
 
 	err := extractFromTar(archivePath, "proxy", filepath.Join(dir, "proxy"))
 	if err == nil {
@@ -99,7 +105,7 @@ func buildTestTar(path, name string, content []byte) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	gz := gzip.NewWriter(f)
 	tw := tar.NewWriter(gz)
 	hdr := &tar.Header{Name: name, Mode: 0755, Size: int64(len(content))}
@@ -109,6 +115,8 @@ func buildTestTar(path, name string, content []byte) error {
 	if _, err := tw.Write(content); err != nil {
 		return err
 	}
-	tw.Close()
+	if err := tw.Close(); err != nil {
+		return err
+	}
 	return gz.Close()
 }

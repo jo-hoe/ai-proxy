@@ -57,7 +57,7 @@ func (WindowsStore) FindByPrefix(prefix string) ([]Credential, error) {
 		}
 		return nil, fmt.Errorf("wincred: CredEnumerateW: %w", e)
 	}
-	defer procCredFree.Call(uintptr(unsafe.Pointer(credArrayPtr)))
+	defer func() { _, _, _ = procCredFree.Call(uintptr(unsafe.Pointer(credArrayPtr))) }()
 
 	results := make([]Credential, 0, count)
 	for _, cred := range credArrayPtr[:count] {

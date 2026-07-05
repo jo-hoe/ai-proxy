@@ -18,7 +18,7 @@ IMAGE_VERSION       := latest
 LOCAL_REGISTRY      := localhost:5000
 LOCAL_REGISTRY_HELM := registry.localhost:5000
 
-.PHONY: build up down logs status test vet push-token get-token run-local \
+.PHONY: build up down logs status test vet lint push-token get-token run-local \
         start-cluster stop-k3d restart-k3d push-k3d start-k3d upgrade-k3d uninstall-k3d \
         generate-helm-docs
 
@@ -58,6 +58,9 @@ test: ## Run all Go tests
 
 vet: ## Run go vet
 	go vet ./...
+
+lint: ## Run golangci-lint
+	golangci-lint run ./...
 
 run-local: ## Build and run the container locally (uses local image tag)
 	IMAGE=proxy:latest $(MAKE) build

@@ -1,7 +1,6 @@
 # ai-proxy
 
 [![CI](https://github.com/jo-hoe/ai-proxy/actions/workflows/ci.yml/badge.svg)](https://github.com/jo-hoe/ai-proxy/actions/workflows/ci.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/jo-hoe/ai-proxy)](https://goreportcard.com/report/github.com/jo-hoe/ai-proxy)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/jo-hoe/ai-proxy)](go.mod)
 [![Latest Release](https://img.shields.io/github/v/release/jo-hoe/ai-proxy)](https://github.com/jo-hoe/ai-proxy/releases/latest)
 

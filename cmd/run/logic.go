@@ -137,7 +137,7 @@ func resolveToken(tokenFile, dir string, store wincred.Store) (path string, clea
 	if err := os.WriteFile(tmp, []byte(token), 0600); err != nil {
 		return "", nil, fmt.Errorf("write temp token: %w", err)
 	}
-	return tmp, func() { os.Remove(tmp) }, nil
+	return tmp, func() { _ = os.Remove(tmp) }, nil
 }
 
 // ensureBinary extracts the proxy binary from the archive if not already present.
@@ -157,13 +157,13 @@ func extractFromTar(archivePath, entryName, destPath string) error {
 	if err != nil {
 		return fmt.Errorf("open archive %s: %w", archivePath, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	gz, err := gzip.NewReader(f)
 	if err != nil {
 		return fmt.Errorf("decompress archive: %w", err)
 	}
-	defer gz.Close()
+	defer func() { _ = gz.Close() }()
 
 	tr := tar.NewReader(gz)
 	for {
