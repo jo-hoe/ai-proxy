@@ -35,6 +35,8 @@ ingress:
   tls: false
   # -- Name of the TLS Secret. Defaults to `<fullname>-tls` when empty.
   tlsSecretName: ""
+  # -- Name of the management TLS Secret. Defaults to `<fullname>-mgmt-tls` when empty.
+  mgmtTlsSecretName: ""
   # -- Extra annotations for both ingress resources.
   annotations: {}
 
