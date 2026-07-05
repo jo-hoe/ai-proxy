@@ -1,3 +1,0 @@
-proxy:
-  port: 7655
-  upstream_url: "https://your-upstream-llm-api"
