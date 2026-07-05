@@ -10,7 +10,7 @@ image:
   # -- Container image repository.
   repository: ghcr.io/jo-hoe/ai-proxy
   # -- Container image tag. Bump alongside chart appVersion.
-  tag: v0.4.0
+  tag: v0.5.0
   # -- Image pull policy. `IfNotPresent` | `Always` | `Never`.
   pullPolicy: IfNotPresent
 
