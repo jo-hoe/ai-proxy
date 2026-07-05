@@ -1,0 +1,67 @@
+{{- if .Values.ingress.enabled -}}
+{{- $fullName := include "ai-proxy.fullname" . -}}
+{{- $tlsSecret := default (printf "%s-tls" $fullName) .Values.ingress.tlsSecretName -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}-proxy
+  labels:
+    {{- include "ai-proxy.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.proxyHost }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullName }}
+                port:
+                  name: proxy
+  {{- if .Values.ingress.tls }}
+  tls:
+    - secretName: {{ $tlsSecret }}
+      hosts:
+        - {{ .Values.ingress.proxyHost }}
+  {{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}-mgmt
+  labels:
+    {{- include "ai-proxy.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.mgmtHost }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullName }}
+                port:
+                  name: mgmt
+  {{- if .Values.ingress.tls }}
+  tls:
+    - secretName: {{ $tlsSecret }}
+      hosts:
+        - {{ .Values.ingress.mgmtHost }}
+  {{- end }}
+{{- end -}}

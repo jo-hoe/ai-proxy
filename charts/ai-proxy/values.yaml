@@ -1,0 +1,49 @@
+nameOverride: ""
+fullnameOverride: ""
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/jo-hoe/ai-proxy
+  tag: v0.4.0
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  # Port 7655: the actual LLM reverse-proxy (consumers call this)
+  proxyPort: 7655
+  # Port 7656: management API (POST /token to push OIDC creds, GET /status)
+  mgmtPort: 7656
+
+ingress:
+  enabled: false
+  # className is optional; leave empty to omit ingressClassName field
+  className: ""
+  # Hostnames for the two ingress paths
+  proxyHost: "ai-proxy.example.com"
+  mgmtHost: "ai-proxy-mgmt.example.com"
+  # TLS is opt-in. When true, references a Secret you must provision separately
+  # (via cert-manager Certificate, external-secrets, or manual kubectl).
+  tls: false
+  # Custom TLS secret name (defaults to <fullname>-tls when empty)
+  tlsSecretName: ""
+  annotations: {}
+
+config:
+  upstream_url: "" # required — LLM API base URL
+
+# OIDC token — mounted as files at /run/secrets/ so the proxy activates on
+# startup without requiring a manual POST /token. If not provided, the proxy
+# still starts and waits for a token push via the management API.
+oidc:
+  # Point at a pre-existing Secret with keys: oidc-endpoint, oidc-client-id, refresh-token
+  existingSecret: ""
+  # Or let the chart render a Secret from these values (dev/testing).
+  endpoint: ""
+  clientId: ""
+  refreshToken: ""
+
+resources: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

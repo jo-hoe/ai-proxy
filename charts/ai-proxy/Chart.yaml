@@ -1,0 +1,8 @@
+apiVersion: v2
+name: ai-proxy
+description: Helm chart for jo-hoe/ai-proxy — OIDC-auth reverse proxy for LLM APIs.
+type: application
+version: 0.1.0
+appVersion: "0.4.0"
+sources:
+  - https://github.com/jo-hoe/ai-proxy

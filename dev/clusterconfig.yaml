@@ -1,0 +1,25 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+
+metadata:
+  name: ai-proxy-cluster
+
+api:
+  host: 127.0.0.1
+  hostPort: 6550
+
+registries:
+  create:
+    name: registry.localhost
+    host: registry.localhost
+    hostPort: 5000
+
+ports:
+  # Proxy port (LLM reverse proxy)
+  - port: 7655:7655
+    nodeFilters:
+      - loadbalancer
+  # Management port (POST /token, GET /status)
+  - port: 7656:7656
+    nodeFilters:
+      - loadbalancer

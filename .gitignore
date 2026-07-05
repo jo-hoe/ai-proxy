@@ -19,8 +19,9 @@ proxy
 *.env
 
 # ── Local configuration ───────────────────────────────────────────────────────
-# Copy config.example.yaml → config.yaml and fill in your values
-config.yaml
+# Copy config.example.yaml → config.yaml and fill in your values.
+# Anchored to repo root so dev/config.yaml (checked-in Helm values) is tracked.
+/config.yaml
 
 # ── Go toolchain ──────────────────────────────────────────────────────────────
 vendor/

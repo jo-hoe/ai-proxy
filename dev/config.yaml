@@ -1,0 +1,20 @@
+# Dev overrides for local k3d cluster.
+# Applied by `make start-k3d` / `make upgrade-k3d`.
+
+service:
+  type: LoadBalancer
+
+ingress:
+  enabled: false
+
+config:
+  # Required — set to the upstream LLM API URL for your test.
+  upstream_url: "https://api.anthropic.com"
+
+# For local dev only — populate to auto-activate the proxy on startup.
+# Prefer using an existingSecret (kubectl create secret generic ...) for
+# anything beyond throwaway testing so the token isn't stored in values.
+oidc:
+  endpoint: ""
+  clientId: ""
+  refreshToken: ""

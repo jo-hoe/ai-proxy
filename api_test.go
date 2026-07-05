@@ -13,13 +13,19 @@ import (
 // mockSupervisor implements supervisorIface for testing.
 type mockSupervisor struct {
 	updateErr   error
+	updateFn    func(endpoint, clientID, refreshToken string) error
 	statusResp  ProxyStatus
 	healthyResp bool
 }
 
-func (m *mockSupervisor) UpdateToken(_, _, _ string) error { return m.updateErr }
-func (m *mockSupervisor) Status() ProxyStatus              { return m.statusResp }
-func (m *mockSupervisor) Healthy() bool                    { return m.healthyResp }
+func (m *mockSupervisor) UpdateToken(endpoint, clientID, refreshToken string) error {
+	if m.updateFn != nil {
+		return m.updateFn(endpoint, clientID, refreshToken)
+	}
+	return m.updateErr
+}
+func (m *mockSupervisor) Status() ProxyStatus { return m.statusResp }
+func (m *mockSupervisor) Healthy() bool       { return m.healthyResp }
 
 func TestAPI_PostToken_Success(t *testing.T) {
 	api := newAPI(&mockSupervisor{})

@@ -1,0 +1,37 @@
+name: Release Chart
+
+# Triggers only when the chart's Chart.yaml is modified on main — usually a
+# version bump. chart-releaser-action is a no-op if the version hasn't changed
+# but the path filter avoids running the workflow at all on unrelated pushes.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'charts/ai-proxy/Chart.yaml'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v5.0.1
+
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@v1.7.0
+        with:
+          charts_dir: charts
+        env:
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"

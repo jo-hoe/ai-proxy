@@ -34,7 +34,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	slog.Info("startup: waiting for POST /token to activate the proxy")
+	// Auto-load token from mounted secret files if present. If not, the proxy
+	// still starts and waits for POST /token.
+	loadTokenFromSecrets(sup)
+	if !sup.Status().Running {
+		slog.Info("startup: waiting for POST /token to activate the proxy")
+	}
 
 	// Proxy server — forwards requests to upstream with injected token.
 	proxySrv := &http.Server{

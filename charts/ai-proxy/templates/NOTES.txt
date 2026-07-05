@@ -1,0 +1,37 @@
+ai-proxy is deployed.
+
+── Token setup ─────────────────────────────────────────────────────────────────
+The proxy needs an OIDC refresh token to activate. There are two ways to
+provide it:
+
+1. Chart-managed Secret (set via values.yaml):
+     oidc:
+       endpoint: "https://your-idp.example.com/oauth2/token"
+       clientId: "your-client-id"
+       refreshToken: "your-refresh-token"
+
+2. Pre-existing Secret (recommended for production — set once, survives image
+   updates and pod restarts):
+     kubectl create secret generic ai-proxy-token \
+       --from-literal=oidc-endpoint="https://your-idp.example.com/oauth2/token" \
+       --from-literal=oidc-client-id="your-client-id" \
+       --from-literal=refresh-token="your-refresh-token"
+   Then: --set oidc.existingSecret=ai-proxy-token
+
+3. Manual API push (if the secret is unavailable at deploy time):
+     curl -X POST http://<mgmt-host>/token \
+       -d "endpoint=...&client_id=...&token=..."
+
+── Endpoints ───────────────────────────────────────────────────────────────────
+{{- if .Values.ingress.enabled }}
+Proxy:      http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.proxyHost }}
+Management: http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.mgmtHost }}
+{{- else }}
+Proxy (in-cluster):      {{ include "ai-proxy.fullname" . }}:{{ .Values.service.proxyPort }}
+Management (in-cluster): {{ include "ai-proxy.fullname" . }}:{{ .Values.service.mgmtPort }}
+
+To port-forward for local access:
+  kubectl port-forward svc/{{ include "ai-proxy.fullname" . }} \
+    {{ .Values.service.proxyPort }}:{{ .Values.service.proxyPort }} \
+    {{ .Values.service.mgmtPort }}:{{ .Values.service.mgmtPort }}
+{{- end }}

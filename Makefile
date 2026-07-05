@@ -1,20 +1,25 @@
 # ai-proxy Makefile
 #
-# Works on Linux, macOS, and Windows (Git Bash / MSYS2).
-# All docker and go commands run cross-platform.
+# Works on Linux, macOS, and Windows (native cmd/PowerShell as well as
+# Git Bash / MSYS2). All docker and go commands run cross-platform.
 
-IMAGE        ?= ghcr.io/jo-hoe/ai-proxy:latest
-CONTAINER    ?= ai-proxy
-PROXY_PORT   ?= 7655
-MGMT_PORT    ?= 7656
-PREFIX       ?= proxy-cli:http
-TOKEN_PATH   ?= oauth2/token
+include help.mk
 
-.PHONY: help build up down logs status test vet push-token get-token run-local
+IMAGE               ?= ghcr.io/jo-hoe/ai-proxy:latest
+CONTAINER           ?= ai-proxy
+PROXY_PORT          ?= 7655
+MGMT_PORT           ?= 7656
+PREFIX              ?= proxy-cli:http
+TOKEN_PATH          ?= oauth2/token
 
-help: ## Show this help
-	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} \
-	/^[a-zA-Z_-]+:.*##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+# k3d / Helm settings
+IMAGE_NAME          := ai-proxy
+IMAGE_VERSION       := latest
+LOCAL_REGISTRY      := localhost:5000
+LOCAL_REGISTRY_HELM := registry.localhost:5000
+
+.PHONY: build up down logs status test vet push-token get-token run-local \
+        start-cluster stop-k3d restart-k3d push-k3d start-k3d upgrade-k3d uninstall-k3d
 
 ## ── Docker ──────────────────────────────────────────────────────────────────
 
@@ -56,3 +61,33 @@ vet: ## Run go vet
 run-local: ## Build and run the container locally (uses local image tag)
 	IMAGE=proxy:latest $(MAKE) build
 	IMAGE=proxy:latest docker compose up -d
+
+## ── k3d / Helm ──────────────────────────────────────────────────────────────
+
+start-cluster: ## Start k3d cluster and local registry
+	k3d cluster create --config dev/clusterconfig.yaml
+
+stop-k3d: ## Stop k3d cluster and local registry
+	k3d cluster delete --config dev/clusterconfig.yaml
+
+restart-k3d: stop-k3d start-k3d ## Restart k3d cluster and re-install chart
+
+push-k3d: ## Build and push Docker image to local k3d registry
+	docker build -t $(IMAGE_NAME):$(IMAGE_VERSION) .
+	docker tag $(IMAGE_NAME):$(IMAGE_VERSION) $(LOCAL_REGISTRY)/$(IMAGE_NAME):$(IMAGE_VERSION)
+	docker push $(LOCAL_REGISTRY)/$(IMAGE_NAME):$(IMAGE_VERSION)
+
+start-k3d: start-cluster push-k3d ## Create cluster, push image, install Helm chart with dev values
+	helm install $(IMAGE_NAME) charts/$(IMAGE_NAME) \
+		--set image.repository=$(LOCAL_REGISTRY_HELM)/$(IMAGE_NAME) \
+		--set image.tag=$(IMAGE_VERSION) \
+		-f dev/config.yaml
+
+upgrade-k3d: push-k3d ## Rebuild image and upgrade Helm release
+	helm upgrade $(IMAGE_NAME) charts/$(IMAGE_NAME) \
+		--set image.repository=$(LOCAL_REGISTRY_HELM)/$(IMAGE_NAME) \
+		--set image.tag=$(IMAGE_VERSION) \
+		-f dev/config.yaml
+
+uninstall-k3d: ## Uninstall Helm release from k3d cluster
+	helm uninstall $(IMAGE_NAME)
