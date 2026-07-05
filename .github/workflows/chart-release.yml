@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      chart_version: ${{ steps.chart_version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -36,26 +38,26 @@ jobs:
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
-  deploy:
+      - name: Read chart version
+        id: chart_version
+        run: |
+          version=$(grep '^version:' charts/ai-proxy/Chart.yaml | awk '{print $2}')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  verify:
     needs: release
     runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - name: Checkout gh-pages
-        uses: actions/checkout@v7
-        with:
-          ref: gh-pages
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-
-      - name: Deploy to GitHub Pages
-        id: deploy
-        uses: actions/deploy-pages@v5
+      - name: Wait for chart to appear in index
+        run: |
+          version="${{ needs.release.outputs.chart_version }}"
+          for i in $(seq 1 10); do
+            if curl -sf https://jo-hoe.github.io/ai-proxy/index.yaml | grep -q "version: $version"; then
+              echo "Chart $version is available in index"
+              exit 0
+            fi
+            echo "Attempt $i: $version not yet in index, waiting 20s..."
+            sleep 20
+          done
+          echo "Chart $version not available after retries — Pages may be delayed"
+          exit 1
