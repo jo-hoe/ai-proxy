@@ -8,9 +8,7 @@ on:
 
 jobs:
   retry:
-    if: |
-      github.event.workflow_run.conclusion == 'failure' &&
-      !startsWith(github.event.workflow_run.head_commit.message, 'ci: retrigger Pages deployment (retry')
+    if: github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -26,7 +24,15 @@ jobs:
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
-      - name: Retrigger Pages deployment
+      - name: Check retry count and retrigger
         run: |
-          git commit --allow-empty -m "ci: retrigger Pages deployment (retry after failure)"
+          msg="${{ github.event.workflow_run.head_commit.message }}"
+          # Extract current attempt number from commit message, default to 0
+          attempt=$(echo "$msg" | grep -oP '(?<=retry )\d+(?=/5)' || echo "0")
+          if [ "$attempt" -ge 5 ]; then
+            echo "Reached maximum retry attempts (5), giving up."
+            exit 0
+          fi
+          next=$((attempt + 1))
+          git commit --allow-empty -m "ci: retrigger Pages deployment (retry ${next}/5)"
           git push origin gh-pages
