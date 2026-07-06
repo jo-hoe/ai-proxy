@@ -2,7 +2,7 @@
 
 Helm chart for jo-hoe/ai-proxy — OIDC-auth reverse proxy for LLM APIs.
 
-![Version: 0.3.2](https://img.shields.io/badge/Version-0.3.2-informational?style=flat-square) 
+![Version: 0.4.0](https://img.shields.io/badge/Version-0.4.0-informational?style=flat-square) 
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) 
 ![AppVersion: 0.5.0](https://img.shields.io/badge/AppVersion-0.5.0-informational?style=flat-square) 
 
@@ -22,9 +22,11 @@ The chart supports two modes for supplying the OIDC token:
 2. **Manual push**. Deploy with no token, then `POST /token` to the management
    API. Useful when the token isn't available at deploy time.
 
-When `oidc.persistSecret` is true (the default), the proxy also writes rotated
+When `oidc.persistSecret` is true, the proxy also writes rotated
 refresh tokens back into the mounted Secret via the k8s API, so pod restarts
-survive OIDC providers that rotate refresh tokens on each exchange.
+survive OIDC providers that rotate refresh tokens on each exchange. Requires
+`oidc.endpoint` or `oidc.existingSecret` to be set — helm will error at install
+time otherwise.
 
 ## Endpoints
 
@@ -65,7 +67,7 @@ helm install ai-proxy oci://ghcr.io/jo-hoe/charts/ai-proxy \
 | oidc.clientId | string | `""` | OAuth client ID. Only used when `existingSecret` is empty. |
 | oidc.endpoint | string | `""` | OIDC token endpoint URL. Only used when `existingSecret` is empty. |
 | oidc.existingSecret | string | `""` | Reference a pre-existing Secret with keys `oidc-endpoint`, `oidc-client-id`, `refresh-token`. Takes precedence over the inline values. |
-| oidc.persistSecret | bool | `true` | When true, the proxy patches the mounted Secret with the latest refresh token after every rotation, so pod restarts survive across an unlimited number of rotations. Requires `rbac.enabled: true`. |
+| oidc.persistSecret | bool | `false` | When true, the proxy patches the mounted Secret with the latest refresh token after every rotation, so pod restarts survive across an unlimited number of rotations. Requires `rbac.enabled: true`. Only valid when `oidc.endpoint` or `oidc.existingSecret` is set — helm will error otherwise. |
 | oidc.refreshToken | string | `""` | Refresh token. Only used when `existingSecret` is empty. For dev/testing only — prefer `existingSecret` in production. |
 | rbac.enabled | bool | `true` | Create ServiceAccount + Role + RoleBinding. Set to false if your cluster provisions these externally. |
 | replicaCount | int | `1` | Number of proxy replicas. |

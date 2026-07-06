@@ -56,8 +56,8 @@ oidc:
   clientId: ""
   # -- Refresh token. Only used when `existingSecret` is empty. For dev/testing only — prefer `existingSecret` in production.
   refreshToken: ""
-  # -- When true, the proxy patches the mounted Secret with the latest refresh token after every rotation, so pod restarts survive across an unlimited number of rotations. Requires `rbac.enabled: true`.
-  persistSecret: true
+  # -- When true, the proxy patches the mounted Secret with the latest refresh token after every rotation, so pod restarts survive across an unlimited number of rotations. Requires `rbac.enabled: true`. Only valid when `oidc.endpoint` or `oidc.existingSecret` is set — helm will error otherwise.
+  persistSecret: false
 
 # RBAC is required only when `oidc.persistSecret` is true. Creates a
 # ServiceAccount, Role, and RoleBinding scoped to `get`/`patch` on the single
