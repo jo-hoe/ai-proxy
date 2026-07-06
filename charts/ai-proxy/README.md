@@ -2,9 +2,9 @@
 
 Helm chart for jo-hoe/ai-proxy — OIDC-auth reverse proxy for LLM APIs.
 
-![Version: 0.5.2](https://img.shields.io/badge/Version-0.5.2-informational?style=flat-square) 
+![Version: 0.5.3](https://img.shields.io/badge/Version-0.5.3-informational?style=flat-square) 
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) 
-![AppVersion: 0.5.0](https://img.shields.io/badge/AppVersion-0.5.0-informational?style=flat-square) 
+![AppVersion: 0.6.0](https://img.shields.io/badge/AppVersion-0.6.0-informational?style=flat-square) 
 
 ## Overview
 
@@ -55,7 +55,7 @@ helm install ai-proxy oci://ghcr.io/jo-hoe/charts/ai-proxy \
 | fullnameOverride | string | `""` | Fully override the generated resource names. |
 | image.pullPolicy | string | `"IfNotPresent"` | Image pull policy. `IfNotPresent` | `Always` | `Never`. |
 | image.repository | string | `"ghcr.io/jo-hoe/ai-proxy"` | Container image repository. |
-| image.tag | string | `"v0.5.0"` | Container image tag. Bump alongside chart appVersion. |
+| image.tag | string | `""` | Container image tag. Defaults to the chart's appVersion when empty. |
 | ingress.annotations | object | `{}` | Extra annotations for both ingress resources. |
 | ingress.className | string | `""` | Ingress class name. Leave empty to omit the field. |
 | ingress.enabled | bool | `false` | Enable Ingress resources for proxy and management endpoints. |

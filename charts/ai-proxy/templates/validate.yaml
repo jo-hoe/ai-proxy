@@ -5,6 +5,14 @@
 {{- if not .Values.rbac.enabled -}}
 {{- fail "oidc.persistSecret=true requires rbac.enabled=true to create the Role/RoleBinding that allows the proxy to patch the Secret." -}}
 {{- end -}}
+{{- if gt (int .Values.replicaCount) 1 -}}
+{{- fail "oidc.persistSecret=true is not safe with replicaCount > 1: multiple pods would race to PATCH the same Secret on every token rotation. Use replicaCount=1 or disable persistSecret." -}}
+{{- end -}}
+{{- end -}}
+{{- if gt (int .Values.replicaCount) 1 -}}
+{{- if and (not .Values.oidc.endpoint) (not .Values.oidc.existingSecret) -}}
+{{- fail "replicaCount > 1 requires OIDC credentials to be mounted (oidc.endpoint or oidc.existingSecret). With multiple replicas, POST /token only reaches one pod — the others never activate. Mount credentials via a Secret so all pods auto-activate on startup." -}}
+{{- end -}}
 {{- end -}}
 {{- if le (int .Values.config.rotation_margin_seconds) 0 -}}
 {{- fail "config.rotation_margin_seconds must be a positive integer." -}}

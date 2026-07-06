@@ -9,8 +9,8 @@ replicaCount: 1
 image:
   # -- Container image repository.
   repository: ghcr.io/jo-hoe/ai-proxy
-  # -- Container image tag. Bump alongside chart appVersion.
-  tag: v0.5.0
+  # -- Container image tag. Defaults to the chart's appVersion when empty.
+  tag: ""
   # -- Image pull policy. `IfNotPresent` | `Always` | `Never`.
   pullPolicy: IfNotPresent
 
