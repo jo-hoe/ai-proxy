@@ -106,10 +106,10 @@ func TestAPI_GetStatus_Running(t *testing.T) {
 	now := time.Now().Truncate(time.Second)
 	api := newAPI(&mockSupervisor{
 		statusResp: ProxyStatus{
-			Running:         true,
-			TokenExpiresAt:  now.Add(time.Hour),
+			Ready:          true,
+			TokenExpiresAt: now.Add(time.Hour),
 			LastRefreshedAt: now,
-			NextRotationAt:  now.Add(50 * time.Minute),
+			NextRotationAt: now.Add(50 * time.Minute),
 		},
 	})
 
@@ -125,8 +125,8 @@ func TestAPI_GetStatus_Running(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if !body.Running {
-		t.Error("running should be true")
+	if !body.Ready {
+		t.Error("ready should be true")
 	}
 	if body.NextRotationAt.IsZero() {
 		t.Error("next_rotation_at should be set")
@@ -136,7 +136,7 @@ func TestAPI_GetStatus_Running(t *testing.T) {
 func TestAPI_GetStatus_RotationError(t *testing.T) {
 	api := newAPI(&mockSupervisor{
 		statusResp: ProxyStatus{
-			Running:       true,
+			Ready:         true,
 			RotationError: "oidc exchange: HTTP 401: unauthorized",
 		},
 	})
@@ -160,7 +160,7 @@ func TestAPI_GetStatus_RotationError(t *testing.T) {
 
 func TestAPI_GetStatus_NoRotationError(t *testing.T) {
 	api := newAPI(&mockSupervisor{
-		statusResp: ProxyStatus{Running: true},
+		statusResp: ProxyStatus{Ready: true},
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/status", nil)
@@ -198,7 +198,7 @@ func TestAPI_GetHealthz_Unhealthy(t *testing.T) {
 }
 
 func TestAPI_GetStatus_NotRunning(t *testing.T) {
-	api := newAPI(&mockSupervisor{statusResp: ProxyStatus{Running: false}})
+	api := newAPI(&mockSupervisor{statusResp: ProxyStatus{Ready: false}})
 
 	req := httptest.NewRequest(http.MethodGet, "/status", nil)
 	rec := httptest.NewRecorder()
@@ -212,7 +212,7 @@ func TestAPI_GetStatus_NotRunning(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if body.Running {
-		t.Error("running should be false")
+	if body.Ready {
+		t.Error("ready should be false")
 	}
 }

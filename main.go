@@ -40,7 +40,7 @@ func main() {
 	// Auto-load token from mounted secret files if present. If not, the proxy
 	// still starts and waits for POST /token.
 	loadTokenFromSecrets(sup)
-	if !sup.Status().Running {
+	if !sup.Status().Ready {
 		slog.Info("startup: waiting for POST /token to activate the proxy")
 	}
 

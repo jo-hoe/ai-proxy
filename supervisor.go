@@ -24,7 +24,7 @@ type secretPatcher interface {
 
 // ProxyStatus is the current state of the supervisor.
 type ProxyStatus struct {
-	Running        bool      `json:"running"`
+	Ready          bool      `json:"ready"`
 	TokenExpiresAt time.Time `json:"token_expires_at,omitzero"`
 	LastRefreshedAt time.Time `json:"last_refreshed_at,omitzero"`
 	LastRotatedAt  time.Time `json:"last_rotated_at,omitzero"`
@@ -209,7 +209,7 @@ func (s *Supervisor) Status() ProxyStatus {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	st := ProxyStatus{
-		Running: s.accessToken != "",
+		Ready: s.accessToken != "" && !s.tokenStale,
 	}
 	if s.tokenResult != nil {
 		st.TokenExpiresAt = s.tokenResult.ExpiresAt
