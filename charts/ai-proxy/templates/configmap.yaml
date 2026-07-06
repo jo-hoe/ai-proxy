@@ -7,3 +7,4 @@ metadata:
 data:
   config.yaml: |
     upstream_url: {{ required "config.upstream_url is required" .Values.config.upstream_url | quote }}
+    rotation_margin_seconds: {{ .Values.config.rotation_margin_seconds }}

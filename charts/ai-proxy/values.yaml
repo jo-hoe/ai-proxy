@@ -45,6 +45,9 @@ config:
   upstream_url: ""
   # -- Log level for the proxy. One of: DEBUG, INFO, WARN, ERROR.
   log_level: "INFO"
+  # -- How many seconds before token expiry to trigger a proactive rotation.
+  # Increase if your OIDC provider is slow to respond.
+  rotation_margin_seconds: 600
 
 # OIDC credentials are mounted at /run/secrets/ so the proxy activates on
 # startup without a manual POST /token. If left unset, the proxy still starts

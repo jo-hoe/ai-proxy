@@ -14,7 +14,6 @@ import (
 	"time"
 )
 
-const rotationInterval = 50 * time.Minute
 const secretPatchTimeout = 10 * time.Second
 
 // secretPatcher is the subset of *SecretPatcher used by Supervisor. Enables
@@ -26,9 +25,9 @@ type secretPatcher interface {
 // ProxyStatus is the current state of the supervisor.
 type ProxyStatus struct {
 	Running         bool      `json:"running"`
-	TokenExpiresAt  time.Time `json:"token_expires_at,omitempty"`
-	LastRefreshedAt time.Time `json:"last_refreshed_at,omitempty"`
-	LastRotatedAt   time.Time `json:"last_rotated_at,omitempty"`
+	TokenExpiresAt  time.Time `json:"token_expires_at,omitzero"`
+	LastRefreshedAt time.Time `json:"last_refreshed_at,omitzero"`
+	LastRotatedAt   time.Time `json:"last_rotated_at,omitzero"`
 	UptimeSeconds   float64   `json:"uptime_seconds"`
 	RotationError   string    `json:"rotation_error,omitempty"`
 }
@@ -36,12 +35,13 @@ type ProxyStatus struct {
 // Supervisor manages OIDC token rotation and proxies requests to the upstream
 // LLM API, injecting the current access token on every request.
 type Supervisor struct {
-	cfg          *Config
-	oidc         *OIDCClient
-	proxyPort    int
-	upstream     *url.URL
-	reverseProxy *httputil.ReverseProxy
-	patcher      secretPatcher // nil when secret persistence is disabled
+	cfg            *Config
+	oidc           *OIDCClient
+	proxyPort      int
+	upstream       *url.URL
+	reverseProxy   *httputil.ReverseProxy
+	patcher        secretPatcher // nil when secret persistence is disabled
+	rotationMargin time.Duration
 
 	mu           sync.RWMutex
 	oidcEndpoint string
@@ -51,6 +51,7 @@ type Supervisor struct {
 	tokenResult  *TokenResult
 	startedAt    time.Time
 	stopCh       chan struct{}
+	resetCh      chan time.Time // signals rotationLoop to reschedule with a new expiry
 	stopped      bool
 
 	lastRotationErr string
@@ -79,11 +80,13 @@ func newSupervisor(cfg *Config, proxyPort string) (*Supervisor, error) {
 	}
 
 	s := &Supervisor{
-		cfg:       cfg,
-		oidc:      NewOIDCClient(),
-		proxyPort: port,
-		upstream:  upstream,
-		stopCh:    make(chan struct{}),
+		cfg:            cfg,
+		oidc:           NewOIDCClient(),
+		proxyPort:      port,
+		upstream:       upstream,
+		rotationMargin: cfg.Proxy.RotationMargin,
+		stopCh:         make(chan struct{}),
+		resetCh:        make(chan time.Time, 1),
 	}
 	// Optional k8s Secret write-back. NewSecretPatcher returns (nil, nil)
 	// when the feature is disabled or we're not running in a cluster.
@@ -173,7 +176,15 @@ func (s *Supervisor) UpdateToken(endpoint, clientID, refreshToken string) error 
 		slog.Info("supervisor: recovered from stale token state")
 	}
 	if first {
-		go s.rotationLoop()
+		go s.rotationLoop(tr.ExpiresAt)
+	} else {
+		// Drain any pending reset then send the latest expiry. The channel is
+		// buffered(1) so the loop always sees the most recent value.
+		select {
+		case <-s.resetCh:
+		default:
+		}
+		s.resetCh <- tr.ExpiresAt
 	}
 	s.persistIfChanged(rtToPersist)
 	slog.Info("supervisor: token updated", "expires_at", tr.ExpiresAt)
@@ -237,28 +248,55 @@ func (s *Supervisor) setToken(tr *TokenResult, endpoint, clientID, refreshToken 
 }
 
 // rotationLoop proactively refreshes the token before it expires.
+// It fires rotationMargin before the token's expiry, so a short-lived token
+// received via POST /token is rotated promptly rather than after a fixed 50m.
 // When the refresh token becomes invalid (invalid_grant) it marks the token as
 // stale and pauses rotation. Rotation resumes automatically once UpdateToken
 // is called with a fresh token.
-func (s *Supervisor) rotationLoop() {
-	ticker := time.NewTicker(rotationInterval)
-	defer ticker.Stop()
+func (s *Supervisor) rotationLoop(firstExpiry time.Time) {
+	timer := time.NewTimer(s.nextRotation(firstExpiry))
+	defer timer.Stop()
 	for {
 		select {
 		case <-s.stopCh:
 			return
-		case <-ticker.C:
+		case expiresAt := <-s.resetCh:
+			// A new token was pushed via POST /token mid-loop; reschedule.
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+			timer.Reset(s.nextRotation(expiresAt))
+		case <-timer.C:
 			s.mu.RLock()
 			stale := s.tokenStale
 			s.mu.RUnlock()
 			if stale {
 				slog.Warn("supervisor: token is stale — skipping rotation until a new token is pushed via POST /token")
+				// Retry in one margin interval rather than spinning.
+				timer.Reset(s.rotationMargin)
 				continue
 			}
 			slog.Debug("supervisor: starting scheduled token rotation")
 			s.rotate()
+			s.mu.RLock()
+			expiresAt := s.tokenResult.ExpiresAt
+			s.mu.RUnlock()
+			timer.Reset(s.nextRotation(expiresAt))
 		}
 	}
+}
+
+// nextRotation returns how long to wait before the next rotation attempt.
+// It targets s.rotationMargin before expiry, with a minimum of zero.
+func (s *Supervisor) nextRotation(expiresAt time.Time) time.Duration {
+	d := time.Until(expiresAt) - s.rotationMargin
+	if d < 0 {
+		return 0
+	}
+	return d
 }
 
 func (s *Supervisor) rotate() {

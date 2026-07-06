@@ -5,7 +5,10 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
+
+const defaultRotationMargin = 10 * time.Minute
 
 // Config holds the full application configuration.
 type Config struct {
@@ -14,8 +17,9 @@ type Config struct {
 
 // ProxyConfig holds proxy process settings.
 type ProxyConfig struct {
-	Port        int
-	UpstreamURL string // upstream LLM API base URL
+	Port           int
+	UpstreamURL    string        // upstream LLM API base URL
+	RotationMargin time.Duration // how early to rotate before token expiry
 }
 
 // LoadConfig reads and parses the YAML config file at path.
@@ -54,6 +58,18 @@ func parseConfig(src string) (*Config, error) {
 	}
 
 	cfg.Proxy.UpstreamURL = flat["upstream_url"]
+
+	cfg.Proxy.RotationMargin = defaultRotationMargin
+	if raw, ok := flat["rotation_margin_seconds"]; ok {
+		n, convErr := strconv.Atoi(raw)
+		if convErr != nil {
+			return nil, fmt.Errorf("config: invalid rotation_margin_seconds %q: %w", raw, convErr)
+		}
+		if n <= 0 {
+			return nil, fmt.Errorf("config: rotation_margin_seconds must be positive, got %d", n)
+		}
+		cfg.Proxy.RotationMargin = time.Duration(n) * time.Second
+	}
 
 	return cfg, nil
 }

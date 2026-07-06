@@ -6,6 +6,9 @@
 {{- fail "oidc.persistSecret=true requires rbac.enabled=true to create the Role/RoleBinding that allows the proxy to patch the Secret." -}}
 {{- end -}}
 {{- end -}}
+{{- if le (int .Values.config.rotation_margin_seconds) 0 -}}
+{{- fail "config.rotation_margin_seconds must be a positive integer." -}}
+{{- end -}}
 {{- $validLevels := list "DEBUG" "INFO" "WARN" "ERROR" -}}
 {{- if not (has (upper .Values.config.log_level) $validLevels) -}}
 {{- fail (printf "config.log_level %q is invalid. Must be one of: DEBUG, INFO, WARN, ERROR" .Values.config.log_level) -}}

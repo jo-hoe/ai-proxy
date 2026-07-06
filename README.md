@@ -16,7 +16,7 @@ image or passed as an environment variable.
 1. The container starts and waits for a token via `POST /token`.
 2. `push-token` reads a refresh token from Windows Credential Manager, parses the OIDC endpoint and client ID from the credential target, and POSTs all three to the management API.
 3. The container exchanges it for an OIDC access token, then reverse-proxies all incoming requests to `upstream_url` with `Authorization: Bearer <token>` injected.
-4. The token is automatically rotated every 50 minutes with zero downtime.
+4. The token is automatically rotated 10 minutes before expiry (configurable via `config.rotation_margin_seconds`) with zero downtime.
 
 ## Quick start
 
