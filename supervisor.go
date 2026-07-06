@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -60,13 +61,16 @@ type Supervisor struct {
 
 // newSupervisor constructs a Supervisor. Call UpdateToken to activate.
 func newSupervisor(cfg *Config, proxyPort string) (*Supervisor, error) {
-	port, _ := strconv.Atoi(proxyPort)
-	if port == 0 {
+	port, err := strconv.Atoi(proxyPort)
+	if err != nil || port == 0 {
+		if err != nil {
+			slog.Warn("supervisor: invalid proxy port string, falling back to config value", "raw", proxyPort, "err", err)
+		}
 		port = cfg.Proxy.Port
 	}
 
 	if cfg.Proxy.UpstreamURL == "" {
-		return nil, fmt.Errorf("proxy.upstream_url is required in config.yaml")
+		return nil, errors.New("proxy.upstream_url is required in config.yaml")
 	}
 
 	upstream, err := url.Parse(cfg.Proxy.UpstreamURL)
@@ -154,6 +158,7 @@ func (s *Supervisor) UpdateToken(endpoint, clientID, refreshToken string) error 
 		return fmt.Errorf("token update: %w", err)
 	}
 	s.mu.Lock()
+	wasStale := s.tokenStale
 	s.setToken(tr, endpoint, clientID, refreshToken)
 	s.tokenStale = false
 	s.lastRotationErr = ""
@@ -161,9 +166,12 @@ func (s *Supervisor) UpdateToken(endpoint, clientID, refreshToken string) error 
 	if first {
 		s.startedAt = time.Now()
 	}
-	// Snapshot the RT under the lock; patch outside the lock (network I/O).
 	rtToPersist := s.refreshToken
 	s.mu.Unlock()
+
+	if wasStale {
+		slog.Info("supervisor: recovered from stale token state")
+	}
 	if first {
 		go s.rotationLoop()
 	}
@@ -223,6 +231,7 @@ func (s *Supervisor) setToken(tr *TokenResult, endpoint, clientID, refreshToken 
 	if tr.RefreshToken != "" {
 		s.refreshToken = tr.RefreshToken
 	} else {
+		slog.Debug("supervisor: server did not rotate refresh token; reusing existing")
 		s.refreshToken = refreshToken
 	}
 }
@@ -246,6 +255,7 @@ func (s *Supervisor) rotationLoop() {
 				slog.Warn("supervisor: token is stale — skipping rotation until a new token is pushed via POST /token")
 				continue
 			}
+			slog.Debug("supervisor: starting scheduled token rotation")
 			s.rotate()
 		}
 	}
@@ -291,6 +301,7 @@ func (s *Supervisor) persistIfChanged(refreshToken string) {
 	unchanged := refreshToken == s.lastPersistedRT
 	s.mu.RUnlock()
 	if unchanged {
+		slog.Debug("supervisor: refresh token unchanged, skipping persist")
 		return
 	}
 

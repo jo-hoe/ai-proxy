@@ -43,6 +43,8 @@ ingress:
 config:
   # -- Required. Base URL of the upstream LLM API to proxy to.
   upstream_url: ""
+  # -- Log level for the proxy. One of: DEBUG, INFO, WARN, ERROR.
+  log_level: "INFO"
 
 # OIDC credentials are mounted at /run/secrets/ so the proxy activates on
 # startup without a manual POST /token. If left unset, the proxy still starts

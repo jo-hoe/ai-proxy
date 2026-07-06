@@ -11,10 +11,13 @@ import (
 	"time"
 )
 
+const envLogLevel = "LOG_LEVEL"
+
 func main() {
-	levelStr := envOrDefault("LOG_LEVEL", "INFO")
+	levelStr := envOrDefault(envLogLevel, "INFO")
 	var level slog.Level
 	if err := level.UnmarshalText([]byte(levelStr)); err != nil {
+		fmt.Fprintf(os.Stderr, "invalid %s %q, defaulting to INFO\n", envLogLevel, levelStr)
 		level = slog.LevelInfo
 	}
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level})))
@@ -41,13 +44,10 @@ func main() {
 		slog.Info("startup: waiting for POST /token to activate the proxy")
 	}
 
-	// Proxy server — forwards requests to upstream with injected token.
 	proxySrv := &http.Server{
 		Addr:    ":" + proxyPort,
 		Handler: sup,
 	}
-
-	// Management API server.
 	mgmtSrv := &http.Server{
 		Addr:    ":" + mgmtPort,
 		Handler: newAPI(sup),
@@ -76,8 +76,12 @@ func main() {
 	slog.Info("shutting down...")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	proxySrv.Shutdown(ctx) //nolint:errcheck
-	mgmtSrv.Shutdown(ctx)  //nolint:errcheck
+	if err := proxySrv.Shutdown(ctx); err != nil {
+		slog.Warn("proxy shutdown error", "err", err)
+	}
+	if err := mgmtSrv.Shutdown(ctx); err != nil {
+		slog.Warn("api shutdown error", "err", err)
+	}
 	sup.stop()
 	slog.Info("done")
 }

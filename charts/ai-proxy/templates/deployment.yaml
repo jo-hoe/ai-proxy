@@ -31,12 +31,13 @@ spec:
             - name: mgmt
               containerPort: {{ .Values.service.mgmtPort }}
               protocol: TCP
-          {{- if .Values.oidc.persistSecret }}
           env:
-            ## Enables in-cluster Secret write-back after every token rotation.
+            - name: LOG_LEVEL
+              value: {{ .Values.config.log_level | quote }}
+            {{- if .Values.oidc.persistSecret }}
             - name: PERSIST_SECRET_NAME
               value: {{ include "ai-proxy.tokenSecretName" . }}
-          {{- end }}
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /status

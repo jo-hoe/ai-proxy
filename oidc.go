@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -34,6 +35,8 @@ type OIDCClient struct {
 func NewOIDCClient() *OIDCClient {
 	return &OIDCClient{http: &http.Client{Timeout: 15 * time.Second}}
 }
+
+const defaultExpiresIn = 3600
 
 // Exchange performs a refresh-token grant against endpoint and returns new tokens.
 // clientID identifies the OAuth 2.0 application to the OIDC server.
@@ -71,7 +74,8 @@ func (c *OIDCClient) Exchange(endpoint, clientID, refreshToken string) (*TokenRe
 
 	expiresIn := tr.ExpiresIn
 	if expiresIn <= 0 {
-		expiresIn = 3600
+		slog.Warn("oidc: server returned expires_in <= 0, defaulting", "default_seconds", defaultExpiresIn, "endpoint", endpoint)
+		expiresIn = defaultExpiresIn
 	}
 	return &TokenResult{
 		AccessToken:  tr.AccessToken,

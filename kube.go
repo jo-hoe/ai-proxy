@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -23,6 +24,12 @@ const (
 	defaultSACA        = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 	defaultSANamespace = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 	defaultAPIServer   = "https://kubernetes.default.svc"
+
+	envPersistSecretName      = "PERSIST_SECRET_NAME"
+	envPersistSecretNamespace = "PERSIST_SECRET_NAMESPACE"
+
+	contentTypeStrategicMergePatch = "application/strategic-merge-patch+json"
+	contentTypeJSON                = "application/json"
 )
 
 // Mutable paths for testing.
@@ -51,7 +58,7 @@ type SecretPatcher struct {
 // Returns an error only when the environment claims a Secret name but the
 // SA files can't be read — that's a misconfiguration worth surfacing.
 func NewSecretPatcher() (*SecretPatcher, error) {
-	secret := os.Getenv("PERSIST_SECRET_NAME")
+	secret := os.Getenv(envPersistSecretName)
 	if secret == "" {
 		return nil, nil
 	}
@@ -59,7 +66,6 @@ func NewSecretPatcher() (*SecretPatcher, error) {
 	tokenBytes, err := os.ReadFile(saTokenPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// Not in a cluster — silently disable rather than fail.
 			slog.Info("kube: not in a cluster, secret persistence disabled")
 			return nil, nil
 		}
@@ -71,18 +77,14 @@ func NewSecretPatcher() (*SecretPatcher, error) {
 		return nil, fmt.Errorf("read SA CA: %w", err)
 	}
 
-	namespace := os.Getenv("PERSIST_SECRET_NAMESPACE")
-	if namespace == "" {
-		nsBytes, err := os.ReadFile(saNamespacePath)
-		if err != nil {
-			return nil, fmt.Errorf("read SA namespace: %w", err)
-		}
-		namespace = strings.TrimSpace(string(nsBytes))
+	namespace, err := resolveNamespace()
+	if err != nil {
+		return nil, err
 	}
 
 	caPool := x509.NewCertPool()
 	if !caPool.AppendCertsFromPEM(caBytes) {
-		return nil, fmt.Errorf("parse SA CA: no PEM blocks found")
+		return nil, errors.New("parse SA CA: no PEM blocks found")
 	}
 
 	return &SecretPatcher{
@@ -97,6 +99,20 @@ func NewSecretPatcher() (*SecretPatcher, error) {
 			},
 		},
 	}, nil
+}
+
+// resolveNamespace returns the pod namespace from the env override or the
+// mounted ServiceAccount file.
+func resolveNamespace() (string, error) {
+	if ns := os.Getenv(envPersistSecretNamespace); ns != "" {
+		slog.Debug("kube: using namespace from env var", "namespace", ns)
+		return ns, nil
+	}
+	nsBytes, err := os.ReadFile(saNamespacePath)
+	if err != nil {
+		return "", fmt.Errorf("read SA namespace: %w", err)
+	}
+	return strings.TrimSpace(string(nsBytes)), nil
 }
 
 // PatchRefreshToken updates the `refresh-token` key of the Secret via a
@@ -122,8 +138,8 @@ func (p *SecretPatcher) PatchRefreshToken(ctx context.Context, refreshToken stri
 		return fmt.Errorf("new request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+p.token)
-	req.Header.Set("Content-Type", "application/strategic-merge-patch+json")
-	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", contentTypeStrategicMergePatch)
+	req.Header.Set("Accept", contentTypeJSON)
 
 	resp, err := p.client.Do(req)
 	if err != nil {

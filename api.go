@@ -37,6 +37,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // form fields, validates via OIDC exchange, and hot-swaps the access token.
 func (a *API) handlePostToken(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
+		slog.Warn("POST /token: bad request", "err", err)
 		writeError(w, http.StatusBadRequest, "cannot parse form")
 		return
 	}

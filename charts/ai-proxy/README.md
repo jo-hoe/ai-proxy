@@ -2,7 +2,7 @@
 
 Helm chart for jo-hoe/ai-proxy — OIDC-auth reverse proxy for LLM APIs.
 
-![Version: 0.4.0](https://img.shields.io/badge/Version-0.4.0-informational?style=flat-square) 
+![Version: 0.5.0](https://img.shields.io/badge/Version-0.5.0-informational?style=flat-square) 
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) 
 ![AppVersion: 0.5.0](https://img.shields.io/badge/AppVersion-0.5.0-informational?style=flat-square) 
 
@@ -49,6 +49,7 @@ helm install ai-proxy oci://ghcr.io/jo-hoe/charts/ai-proxy \
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Node/pod affinity rules. |
+| config.log_level | string | `"INFO"` | Log level for the proxy. One of: DEBUG, INFO, WARN, ERROR. |
 | config.upstream_url | string | `""` | Required. Base URL of the upstream LLM API to proxy to. |
 | fullnameOverride | string | `""` | Fully override the generated resource names. |
 | image.pullPolicy | string | `"IfNotPresent"` | Image pull policy. `IfNotPresent` | `Always` | `Never`. |
