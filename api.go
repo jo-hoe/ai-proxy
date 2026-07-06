@@ -25,6 +25,7 @@ func newAPI(sup supervisorIface) *API {
 	a := &API{mux: http.NewServeMux(), sup: sup}
 	a.mux.HandleFunc("POST /token", a.handlePostToken)
 	a.mux.HandleFunc("GET /status", a.handleGetStatus)
+	a.mux.HandleFunc("GET /livez", a.handleGetLivez)
 	a.mux.HandleFunc("GET /healthz", a.handleGetHealthz)
 	return a
 }
@@ -69,8 +70,14 @@ func (a *API) handleGetStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, a.sup.Status())
 }
 
+// handleGetLivez always returns 200 — confirms the process is running.
+// Used as the liveness probe; does not check token state.
+func (a *API) handleGetLivez(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
 // handleGetHealthz returns 200 when the proxy is ready, 503 otherwise.
-// Suitable for Docker/k8s health checks.
+// Suitable for readiness checks — reflects token and health state.
 func (a *API) handleGetHealthz(w http.ResponseWriter, r *http.Request) {
 	if !a.sup.Healthy() {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unhealthy"})
