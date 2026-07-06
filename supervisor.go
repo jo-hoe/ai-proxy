@@ -24,12 +24,12 @@ type secretPatcher interface {
 
 // ProxyStatus is the current state of the supervisor.
 type ProxyStatus struct {
-	Running         bool      `json:"running"`
-	TokenExpiresAt  time.Time `json:"token_expires_at,omitzero"`
+	Running        bool      `json:"running"`
+	TokenExpiresAt time.Time `json:"token_expires_at,omitzero"`
 	LastRefreshedAt time.Time `json:"last_refreshed_at,omitzero"`
-	LastRotatedAt   time.Time `json:"last_rotated_at,omitzero"`
-	UptimeSeconds   float64   `json:"uptime_seconds"`
-	RotationError   string    `json:"rotation_error,omitempty"`
+	LastRotatedAt  time.Time `json:"last_rotated_at,omitzero"`
+	NextRotationAt time.Time `json:"next_rotation_at,omitzero"`
+	RotationError  string    `json:"rotation_error,omitempty"`
 }
 
 // Supervisor manages OIDC token rotation and proxies requests to the upstream
@@ -41,6 +41,7 @@ type Supervisor struct {
 	upstream       *url.URL
 	reverseProxy   *httputil.ReverseProxy
 	patcher        secretPatcher // nil when secret persistence is disabled
+	persistSecret  string        // name of the k8s Secret being patched, for logging
 	rotationMargin time.Duration
 
 	mu           sync.RWMutex
@@ -56,6 +57,7 @@ type Supervisor struct {
 
 	lastRotationErr string
 	lastRotationAt  time.Time
+	nextRotationAt  time.Time // when the next proactive rotation is scheduled
 	tokenStale      bool   // set when rotation gets invalid_grant; cleared by UpdateToken
 	lastPersistedRT string // last refresh token successfully patched into the k8s Secret
 }
@@ -95,6 +97,7 @@ func newSupervisor(cfg *Config, proxyPort string) (*Supervisor, error) {
 		slog.Warn("supervisor: secret patcher init failed, persistence disabled", "err", err)
 	} else if patcher != nil {
 		s.patcher = patcher
+		s.persistSecret = patcher.secret
 		slog.Info("supervisor: k8s Secret persistence enabled", "secret", patcher.secret, "namespace", patcher.namespace)
 	}
 	s.reverseProxy = s.buildReverseProxy()
@@ -169,6 +172,8 @@ func (s *Supervisor) UpdateToken(endpoint, clientID, refreshToken string) error 
 	if first {
 		s.startedAt = time.Now()
 	}
+	nextAt := time.Now().Add(s.nextRotation(tr.ExpiresAt))
+	s.nextRotationAt = nextAt
 	rtToPersist := s.refreshToken
 	s.mu.Unlock()
 
@@ -187,7 +192,7 @@ func (s *Supervisor) UpdateToken(endpoint, clientID, refreshToken string) error 
 		s.resetCh <- tr.ExpiresAt
 	}
 	s.persistIfChanged(rtToPersist)
-	slog.Info("supervisor: token updated", "expires_at", tr.ExpiresAt)
+	slog.Info("supervisor: token updated", "expires_at", tr.ExpiresAt, "next_rotation_at", nextAt)
 	return nil
 }
 
@@ -212,11 +217,9 @@ func (s *Supervisor) Status() ProxyStatus {
 			-time.Duration(s.tokenResult.ExpiresIn) * time.Second,
 		)
 	}
-	if !s.startedAt.IsZero() {
-		st.UptimeSeconds = time.Since(s.startedAt).Seconds()
-	}
 	st.RotationError = s.lastRotationErr
 	st.LastRotatedAt = s.lastRotationAt
+	st.NextRotationAt = s.nextRotationAt
 	return st
 }
 
@@ -268,7 +271,13 @@ func (s *Supervisor) rotationLoop(firstExpiry time.Time) {
 				default:
 				}
 			}
-			timer.Reset(s.nextRotation(expiresAt))
+			d := s.nextRotation(expiresAt)
+			nextAt := time.Now().Add(d)
+			s.mu.Lock()
+			s.nextRotationAt = nextAt
+			s.mu.Unlock()
+			timer.Reset(d)
+			slog.Info("supervisor: rotation rescheduled", "next_rotation_at", nextAt)
 		case <-timer.C:
 			s.mu.RLock()
 			stale := s.tokenStale
@@ -284,7 +293,13 @@ func (s *Supervisor) rotationLoop(firstExpiry time.Time) {
 			s.mu.RLock()
 			expiresAt := s.tokenResult.ExpiresAt
 			s.mu.RUnlock()
-			timer.Reset(s.nextRotation(expiresAt))
+			d := s.nextRotation(expiresAt)
+			nextAt := time.Now().Add(d)
+			s.mu.Lock()
+			s.nextRotationAt = nextAt
+			s.mu.Unlock()
+			timer.Reset(d)
+			slog.Info("supervisor: next rotation scheduled", "next_rotation_at", nextAt)
 		}
 	}
 }
@@ -352,7 +367,7 @@ func (s *Supervisor) persistIfChanged(refreshToken string) {
 	s.mu.Lock()
 	s.lastPersistedRT = refreshToken
 	s.mu.Unlock()
-	slog.Info("supervisor: refresh token persisted to k8s Secret")
+	slog.Info("supervisor: refresh token persisted to k8s Secret", "secret", s.persistSecret)
 }
 
 // isInvalidGrant reports whether the error is an OIDC invalid_grant response.

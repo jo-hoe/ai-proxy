@@ -109,7 +109,7 @@ func TestAPI_GetStatus_Running(t *testing.T) {
 			Running:         true,
 			TokenExpiresAt:  now.Add(time.Hour),
 			LastRefreshedAt: now,
-			UptimeSeconds:   42.5,
+			NextRotationAt:  now.Add(50 * time.Minute),
 		},
 	})
 
@@ -128,8 +128,8 @@ func TestAPI_GetStatus_Running(t *testing.T) {
 	if !body.Running {
 		t.Error("running should be true")
 	}
-	if body.UptimeSeconds != 42.5 {
-		t.Errorf("uptime = %f, want 42.5", body.UptimeSeconds)
+	if body.NextRotationAt.IsZero() {
+		t.Error("next_rotation_at should be set")
 	}
 }
 
@@ -138,7 +138,6 @@ func TestAPI_GetStatus_RotationError(t *testing.T) {
 		statusResp: ProxyStatus{
 			Running:       true,
 			RotationError: "oidc exchange: HTTP 401: unauthorized",
-			UptimeSeconds: 10,
 		},
 	})
 
@@ -161,7 +160,7 @@ func TestAPI_GetStatus_RotationError(t *testing.T) {
 
 func TestAPI_GetStatus_NoRotationError(t *testing.T) {
 	api := newAPI(&mockSupervisor{
-		statusResp: ProxyStatus{Running: true, UptimeSeconds: 10},
+		statusResp: ProxyStatus{Running: true},
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/status", nil)

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"syscall"
 )
 
 // Default secret file paths. Overridable via variables below for testing.
@@ -57,10 +58,18 @@ func readSecretFiles() (endpoint, clientID, token, missing string) {
 func readSecret(path string) string {
 	b, err := os.ReadFile(path)
 	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
+		if !errors.Is(err, os.ErrNotExist) && !isDirectory(err) {
 			slog.Warn("startup: could not read secret file", "path", path, "err", err)
 		}
 		return ""
 	}
 	return strings.TrimSpace(string(b))
+}
+
+// isDirectory reports whether an error from os.ReadFile was caused by the
+// path being a directory — expected when optional secret volumes are mounted
+// but the Secret does not exist yet (kubelet creates empty dir placeholders).
+func isDirectory(err error) bool {
+	var pe *os.PathError
+	return errors.As(err, &pe) && errors.Is(pe.Err, syscall.EISDIR)
 }
