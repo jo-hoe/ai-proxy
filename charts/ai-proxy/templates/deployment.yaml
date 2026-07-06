@@ -20,6 +20,10 @@ spec:
       {{- if .Values.rbac.enabled }}
       serviceAccountName: {{ include "ai-proxy.serviceAccountName" . }}
       {{- end }}
+      automountServiceAccountToken: {{ .Values.rbac.enabled }}
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: ai-proxy
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -40,16 +44,19 @@ spec:
             {{- end }}
           livenessProbe:
             httpGet:
-              path: /status
+              path: /healthz
               port: mgmt
             initialDelaySeconds: 5
             periodSeconds: 30
+            failureThreshold: 5
+            timeoutSeconds: 3
           readinessProbe:
             httpGet:
               path: /status
               port: mgmt
             initialDelaySeconds: 5
             periodSeconds: 10
+            timeoutSeconds: 3
           volumeMounts:
             - name: config
               mountPath: /config.yaml
@@ -72,6 +79,10 @@ spec:
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
       volumes:
         - name: config
           configMap:

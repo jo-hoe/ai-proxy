@@ -2,6 +2,9 @@
 {{- if and (not .Values.oidc.endpoint) (not .Values.oidc.existingSecret) -}}
 {{- fail "oidc.persistSecret=true requires a secret to exist, but neither oidc.endpoint nor oidc.existingSecret is set. Either supply OIDC credentials (oidc.endpoint + oidc.clientId + oidc.refreshToken) so the chart creates the secret, or point oidc.existingSecret at a pre-existing secret. Set oidc.persistSecret=false to use the manual POST /token flow without persistence." -}}
 {{- end -}}
+{{- if not .Values.rbac.enabled -}}
+{{- fail "oidc.persistSecret=true requires rbac.enabled=true to create the Role/RoleBinding that allows the proxy to patch the Secret." -}}
+{{- end -}}
 {{- end -}}
 {{- $validLevels := list "DEBUG" "INFO" "WARN" "ERROR" -}}
 {{- if not (has (upper .Values.config.log_level) $validLevels) -}}
