@@ -20,7 +20,7 @@ their base URL.
 - Models: `GET /anthropic/v1/models`
 - Messages: `POST /anthropic/v1/messages`
 
-### Models (as of 2026-07-05)
+### Models (as of 2026-07-16)
 
 | Model ID | Display name |
 |---|---|
@@ -31,6 +31,7 @@ their base URL.
 | `anthropic--claude-4.6-sonnet` | Claude 4.6 Sonnet |
 | `anthropic--claude-4.6-opus` | Claude 4.6 Opus |
 | `anthropic--claude-4.7-opus` | Claude 4.7 Opus |
+| `anthropic--claude-4.8-opus` | Claude 4.8 Opus |
 
 The Messages endpoint also accepts short aliases that resolve to a dated
 snapshot in the response (as of 2026-07-05):
@@ -51,7 +52,7 @@ Native OpenAI API. Point OpenAI SDKs at `$BASE/openai/v1` as their base URL.
 - Chat: `POST /openai/v1/chat/completions`
 - Embeddings: `POST /openai/v1/embeddings`
 
-### Models (as of 2026-07-05)
+### Models (as of 2026-07-16)
 
 | Model ID |
 |---|
@@ -73,7 +74,7 @@ Native Google Generative Language API. Note the version is `v1beta`, not `v1`.
 - Token count: `POST /gemini/v1beta/models/<model>:countTokens`
 - Embed: `POST /gemini/v1beta/models/<model>:embedContent`
 
-### Models (as of 2026-07-05)
+### Models (as of 2026-07-16)
 
 | Model ID | Input tokens | Output tokens | Methods |
 |---|---|---|---|
@@ -81,6 +82,7 @@ Native Google Generative Language API. Note the version is `v1beta`, not `v1`.
 | `gemini-2.5-flash-lite` | 1,000,000 | 65,536 | generateContent, countTokens, createCachedContent |
 | `gemini-2.5-pro` | 1,000,000 | 65,536 | generateContent, countTokens, createCachedContent |
 | `gemini-3.1-flash-lite` | 1,000,000 | 65,536 | generateContent, countTokens, createCachedContent |
+| `gemini-3.5-flash` | 1,000,000 | 65,536 | generateContent, countTokens, createCachedContent |
 | `gemini-embedding` | 1,048,576 | — | embedContent |
 
 ## Refreshing this document
