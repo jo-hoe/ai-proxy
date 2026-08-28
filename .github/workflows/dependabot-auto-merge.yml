@@ -1,0 +1,31 @@
+name: Dependabot auto-merge
+
+# Automatically merges Dependabot pull requests once all required status checks
+# pass. Uses GitHub's native auto-merge, so the PR is only merged after CI is
+# green — if checks fail, the PR stays open. Runs with the built-in GITHUB_TOKEN.
+#
+# Requires "Allow auto-merge" to be enabled in the repository settings
+# (Settings → General → Pull Requests). Without it, `gh pr merge --auto` fails.
+
+on: pull_request_target
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
