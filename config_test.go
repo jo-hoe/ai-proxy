@@ -22,6 +22,26 @@ proxy:
 	}
 }
 
+func TestParseConfig_DefaultClientVersion(t *testing.T) {
+	cfg, err := parseConfig("proxy:\n  upstream_url: \"https://api.example.com\"\n")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Proxy.ClientVersion != defaultClientVersion {
+		t.Errorf("client_version = %q, want default %q", cfg.Proxy.ClientVersion, defaultClientVersion)
+	}
+}
+
+func TestParseConfig_ClientVersionOverride(t *testing.T) {
+	cfg, err := parseConfig("client_version: \"1.9.0\"\n")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Proxy.ClientVersion != "1.9.0" {
+		t.Errorf("client_version = %q, want 1.9.0", cfg.Proxy.ClientVersion)
+	}
+}
+
 func TestParseConfig_DefaultPort(t *testing.T) {
 	src := `
 proxy:

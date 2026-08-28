@@ -10,6 +10,11 @@ import (
 
 const defaultRotationMargin = 10 * time.Minute
 
+// defaultClientVersion is the client version reported to the upstream API.
+// The upstream rejects callers below its minimum with HTTP 426; bump this when
+// that minimum rises. Must be valid semver.
+const defaultClientVersion = "1.4.5"
+
 // Config holds the full application configuration.
 type Config struct {
 	Proxy ProxyConfig
@@ -20,6 +25,7 @@ type ProxyConfig struct {
 	Port           int
 	UpstreamURL    string        // upstream LLM API base URL
 	RotationMargin time.Duration // how early to rotate before token expiry
+	ClientVersion  string        // client version reported to the upstream API
 }
 
 // LoadConfig reads and parses the YAML config file at path.
@@ -58,6 +64,11 @@ func parseConfig(src string) (*Config, error) {
 	}
 
 	cfg.Proxy.UpstreamURL = flat["upstream_url"]
+
+	cfg.Proxy.ClientVersion = defaultClientVersion
+	if raw, ok := flat["client_version"]; ok && raw != "" {
+		cfg.Proxy.ClientVersion = raw
+	}
 
 	cfg.Proxy.RotationMargin = defaultRotationMargin
 	if raw, ok := flat["rotation_margin_seconds"]; ok {

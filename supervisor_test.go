@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"sync/atomic"
 	"testing"
 )
@@ -76,5 +79,40 @@ func TestPersistIfChanged_patchFailureDoesNotUpdateState(t *testing.T) {
 	s.mu.RUnlock()
 	if persisted != "" {
 		t.Errorf("lastPersistedRT = %q, want empty after failed patch", persisted)
+	}
+}
+
+func TestReverseProxy_InjectsClientVersionHeader(t *testing.T) {
+	var gotAppVersion, gotAuth string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAppVersion = r.Header.Get(clientVersionHeader)
+		gotAuth = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+
+	u, err := url.Parse(upstream.URL)
+	if err != nil {
+		t.Fatalf("parse upstream: %v", err)
+	}
+	s := &Supervisor{
+		upstream:    u,
+		appVersion:  clientVersionPrefix + "1.4.5",
+		accessToken: "tok-123",
+	}
+	s.reverseProxy = s.buildReverseProxy()
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/messages", nil)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rr.Code)
+	}
+	if want := clientVersionPrefix + "1.4.5"; gotAppVersion != want {
+		t.Errorf("client version header = %q, want %q", gotAppVersion, want)
+	}
+	if gotAuth != "Bearer tok-123" {
+		t.Errorf("Authorization = %q, want Bearer tok-123", gotAuth)
 	}
 }

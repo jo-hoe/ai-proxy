@@ -48,6 +48,9 @@ config:
   # -- How many seconds before token expiry to trigger a proactive rotation.
   # Increase if your OIDC provider is slow to respond.
   rotation_margin_seconds: 600
+  # -- Client version reported to the upstream API. The upstream rejects callers
+  # below its minimum with HTTP 426; bump this when that minimum rises. Must be valid semver.
+  client_version: "1.4.5"
 
 # OIDC credentials are mounted at /run/secrets/ so the proxy activates on
 # startup without a manual POST /token. If left unset, the proxy still starts

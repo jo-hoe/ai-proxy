@@ -1,3 +1,6 @@
 proxy:
   port: 7655
   upstream_url: "https://your-upstream-llm-api"
+  # Client version reported to the upstream API. The upstream rejects callers
+  # below its minimum with HTTP 426. Optional — defaults to a compliant version if omitted.
+  client_version: "1.4.5"

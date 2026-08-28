@@ -16,6 +16,13 @@ import (
 
 const secretPatchTimeout = 10 * time.Second
 
+// clientVersionHeader and clientVersionPrefix identify the client to the
+// upstream API; the value is sent as clientVersionPrefix + version.
+const (
+	clientVersionHeader = "X-HAI-App-Version"
+	clientVersionPrefix = "hai-cli/"
+)
+
 // secretPatcher is the subset of *SecretPatcher used by Supervisor. Enables
 // nil safety (nil implementations swallow calls) and test injection.
 type secretPatcher interface {
@@ -39,6 +46,7 @@ type Supervisor struct {
 	oidc           *OIDCClient
 	proxyPort      int
 	upstream       *url.URL
+	appVersion     string // client version value reported to the upstream API
 	reverseProxy   *httputil.ReverseProxy
 	patcher        secretPatcher // nil when secret persistence is disabled
 	persistSecret  string        // name of the k8s Secret being patched, for logging
@@ -86,6 +94,7 @@ func newSupervisor(cfg *Config, proxyPort string) (*Supervisor, error) {
 		oidc:           NewOIDCClient(),
 		proxyPort:      port,
 		upstream:       upstream,
+		appVersion:     clientVersionPrefix + cfg.Proxy.ClientVersion,
 		rotationMargin: cfg.Proxy.RotationMargin,
 		stopCh:         make(chan struct{}),
 		resetCh:        make(chan time.Time, 1),
@@ -115,6 +124,11 @@ func (s *Supervisor) buildReverseProxy() *httputil.ReverseProxy {
 			token := s.accessToken
 			s.mu.RUnlock()
 			pr.Out.Header.Set("Authorization", "Bearer "+token)
+			// Identify the client to the upstream API so its version gate
+			// (HTTP 426) admits the request.
+			if s.appVersion != "" {
+				pr.Out.Header.Set(clientVersionHeader, s.appVersion)
+			}
 			slog.Debug("proxy request",
 				"method", pr.In.Method,
 				"path", pr.In.URL.Path,
