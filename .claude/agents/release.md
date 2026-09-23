@@ -27,7 +27,7 @@ git diff $(git tag --sort=-v:refname | head -1)..HEAD -- charts/ai-proxy/ *.go c
 ```
 
 **Determine release type from the diff:**
-- **No release needed** — only non-app, non-chart files changed (e.g. `.claude/`, docs, CI config). Stop here and report: `[Step 1/5] No release needed — no app or chart changes since last tag.`
+- **No release needed** — only non-app, non-chart files changed (e.g. `.claude/`, `scripts/`, `docs/`, `Makefile`, CI config). Skip Steps 2–3 chart-bump and tag steps, but still commit + push any uncommitted working-tree changes (Step 3 commit logic applies). Report: `[Step 1/5] No version bump needed — committing non-release changes and pushing.`
 - **Full release** — app code changed (root `*.go`, `cmd/`, `internal/`, `go.mod`, `go.sum`, `Dockerfile`). Bumps both `version` and `appVersion`. Pushes a new semver tag to trigger the Docker image build.
 - **Chart-only release** — only chart templates/values changed (`charts/`), no app code changes. Bumps only `version`, keeps `appVersion`. No new tag pushed.
 
