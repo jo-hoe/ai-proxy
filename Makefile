@@ -20,7 +20,7 @@ LOCAL_REGISTRY_HELM := registry.localhost:5000
 
 .PHONY: build up down logs status test vet lint push-token get-token run-local \
         start-cluster stop-k3d restart-k3d push-k3d start-k3d upgrade-k3d uninstall-k3d \
-        generate-helm-docs
+        generate-helm-docs refresh-models
 
 ## ── Docker ──────────────────────────────────────────────────────────────────
 
@@ -61,6 +61,9 @@ vet: ## Run go vet
 
 lint: ## Run golangci-lint
 	golangci-lint run ./...
+
+refresh-models: ## Refresh docs/providers-and-models.md from the live proxy
+	cd scripts && go run ./refresh-models -doc ../docs/providers-and-models.md
 
 run-local: ## Build and run the container locally (uses local image tag)
 	IMAGE=proxy:latest $(MAKE) build

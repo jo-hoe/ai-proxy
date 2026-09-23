@@ -20,16 +20,15 @@ their base URL.
 - Models: `GET /anthropic/v1/models`
 - Messages: `POST /anthropic/v1/messages`
 
-### Models (as of 2026-07-16)
+### Models (as of 2026-09-23)
 
 | Model ID | Display name |
 |---|---|
-| `anthropic--claude-4-sonnet` | Claude 4 Sonnet |
 | `anthropic--claude-4.5-haiku` | Claude 4.5 Haiku |
-| `anthropic--claude-4.5-sonnet` | Claude 4.5 Sonnet |
 | `anthropic--claude-4.5-opus` | Claude 4.5 Opus |
-| `anthropic--claude-4.6-sonnet` | Claude 4.6 Sonnet |
+| `anthropic--claude-4.5-sonnet` | Claude 4.5 Sonnet |
 | `anthropic--claude-4.6-opus` | Claude 4.6 Opus |
+| `anthropic--claude-4.6-sonnet` | Claude 4.6 Sonnet |
 | `anthropic--claude-4.7-opus` | Claude 4.7 Opus |
 | `anthropic--claude-4.8-opus` | Claude 4.8 Opus |
 
@@ -52,7 +51,7 @@ Native OpenAI API. Point OpenAI SDKs at `$BASE/openai/v1` as their base URL.
 - Chat: `POST /openai/v1/chat/completions`
 - Embeddings: `POST /openai/v1/embeddings`
 
-### Models (as of 2026-07-16)
+### Models (as of 2026-09-23)
 
 | Model ID |
 |---|
@@ -62,6 +61,9 @@ Native OpenAI API. Point OpenAI SDKs at `$BASE/openai/v1` as their base URL.
 | `gpt-5-mini` |
 | `gpt-5.4` |
 | `gpt-5.5` |
+| `gpt-5.6-luna` |
+| `gpt-5.6-sol` |
+| `gpt-5.6-terra` |
 | `text-embedding-3-large` |
 | `text-embedding-3-small` |
 
@@ -74,7 +76,7 @@ Native Google Generative Language API. Note the version is `v1beta`, not `v1`.
 - Token count: `POST /gemini/v1beta/models/<model>:countTokens`
 - Embed: `POST /gemini/v1beta/models/<model>:embedContent`
 
-### Models (as of 2026-07-16)
+### Models (as of 2026-09-23)
 
 | Model ID | Input tokens | Output tokens | Methods |
 |---|---|---|---|

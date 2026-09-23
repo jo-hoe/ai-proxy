@@ -1,0 +1,42 @@
+# Providers whose model tables in docs/providers-and-models.md are auto-refreshed
+# by scripts/refresh-models. Each entry maps a proxy sub-path to a response parser
+# ("format") and the markdown section heading whose table should be regenerated.
+providers:
+  - name: Anthropic
+    slug: anthropic
+    path: /anthropic/v1/models
+    format: anthropic
+    heading: "Anthropic — `/anthropic/v1/...`"
+  - name: OpenAI
+    slug: openai
+    path: /openai/v1/models
+    format: openai
+    heading: "OpenAI — `/openai/v1/...`"
+  - name: Google Gemini
+    slug: gemini
+    path: /gemini/v1beta/models
+    format: gemini
+    heading: "Google Gemini — `/gemini/v1beta/...`"
+
+# Vendor prefixes probed only for existence (200 vs 404). The upstream has no
+# cross-provider catalogue endpoint, so unknown vendors cannot be enumerated —
+# this list is how we notice one appearing. Any candidate that starts returning a
+# 2xx is flagged so a human can add it to `providers` above (with a parser).
+candidates:
+  - azure
+  - bedrock
+  - vertex
+  - mistral
+  - cohere
+  - meta
+  - ai21
+  - alephalpha
+  - nvidia
+  - watsonx
+  - deepseek
+  - xai
+  - databricks
+  - fireworks
+  - groq
+  - together
+  - perplexity
