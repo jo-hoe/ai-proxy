@@ -14,10 +14,10 @@
 {{- fail "replicaCount > 1 requires OIDC credentials to be mounted (oidc.endpoint or oidc.existingSecret). With multiple replicas, POST /token only reaches one pod — the others never activate. Mount credentials via a Secret so all pods auto-activate on startup." -}}
 {{- end -}}
 {{- end -}}
-{{- if le (int .Values.config.rotation_margin_seconds) 0 -}}
-{{- fail "config.rotation_margin_seconds must be a positive integer." -}}
+{{- if le (int .Values.config.rotationMarginSeconds) 0 -}}
+{{- fail "config.rotationMarginSeconds must be a positive integer." -}}
 {{- end -}}
 {{- $validLevels := list "DEBUG" "INFO" "WARN" "ERROR" -}}
-{{- if not (has (upper .Values.config.log_level) $validLevels) -}}
-{{- fail (printf "config.log_level %q is invalid. Must be one of: DEBUG, INFO, WARN, ERROR" .Values.config.log_level) -}}
+{{- if not (has (upper .Values.config.logLevel) $validLevels) -}}
+{{- fail (printf "config.logLevel %q is invalid. Must be one of: DEBUG, INFO, WARN, ERROR" .Values.config.logLevel) -}}
 {{- end -}}

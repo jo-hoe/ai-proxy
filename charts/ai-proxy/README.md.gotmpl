@@ -38,7 +38,7 @@ time otherwise.
 
 ```bash
 helm install ai-proxy oci://ghcr.io/jo-hoe/charts/ai-proxy \
-  --set config.upstream_url=https://api.anthropic.com \
+  --set config.upstreamUrl=https://api.anthropic.com \
   --set oidc.endpoint=https://your-idp.example.com/oauth2/token \
   --set oidc.clientId=your-client-id \
   --set oidc.refreshToken=your-refresh-token

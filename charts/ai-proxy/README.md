@@ -39,7 +39,7 @@ time otherwise.
 
 ```bash
 helm install ai-proxy oci://ghcr.io/jo-hoe/charts/ai-proxy \
-  --set config.upstream_url=https://api.anthropic.com \
+  --set config.upstreamUrl=https://api.anthropic.com \
   --set oidc.endpoint=https://your-idp.example.com/oauth2/token \
   --set oidc.clientId=your-client-id \
   --set oidc.refreshToken=your-refresh-token
@@ -49,9 +49,10 @@ helm install ai-proxy oci://ghcr.io/jo-hoe/charts/ai-proxy \
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Node/pod affinity rules. |
-| config.log_level | string | `"INFO"` | Log level for the proxy. One of: DEBUG, INFO, WARN, ERROR. |
-| config.rotation_margin_seconds | int | `600` | How many seconds before token expiry to trigger a proactive rotation. Increase if your OIDC provider is slow to respond. |
-| config.upstream_url | string | `""` | Required. Base URL of the upstream LLM API to proxy to. |
+| config.clientVersion | string | `"1.4.6"` | Client version reported to the upstream API. The upstream rejects callers below its minimum with HTTP 426; bump this when that minimum rises. Must be valid semver. |
+| config.logLevel | string | `"INFO"` | Log level for the proxy. One of: DEBUG, INFO, WARN, ERROR. |
+| config.rotationMarginSeconds | int | `600` | How many seconds before token expiry to trigger a proactive rotation. Increase if your OIDC provider is slow to respond. |
+| config.upstreamUrl | string | `""` | Required. Base URL of the upstream LLM API to proxy to. |
 | fullnameOverride | string | `""` | Fully override the generated resource names. |
 | image.pullPolicy | string | `"IfNotPresent"` | Image pull policy. `IfNotPresent` | `Always` | `Never`. |
 | image.repository | string | `"ghcr.io/jo-hoe/ai-proxy"` | Container image repository. |

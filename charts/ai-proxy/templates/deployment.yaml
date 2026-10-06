@@ -37,7 +37,7 @@ spec:
               protocol: TCP
           env:
             - name: LOG_LEVEL
-              value: {{ .Values.config.log_level | quote }}
+              value: {{ .Values.config.logLevel | quote }}
             {{- if .Values.oidc.persistSecret }}
             - name: PERSIST_SECRET_NAME
               value: {{ include "ai-proxy.tokenSecretName" . }}
