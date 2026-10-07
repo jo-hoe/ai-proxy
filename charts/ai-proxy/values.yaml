@@ -50,7 +50,7 @@ config:
   rotationMarginSeconds: 600
   # -- Client version reported to the upstream API. The upstream rejects callers
   # below its minimum with HTTP 426; bump this when that minimum rises. Must be valid semver.
-  clientVersion: "1.4.6"
+  clientVersion: "1.4.7"
 
 # OIDC credentials are mounted at /run/secrets/ so the proxy activates on
 # startup without a manual POST /token. If left unset, the proxy still starts
