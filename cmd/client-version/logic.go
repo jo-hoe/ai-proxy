@@ -88,7 +88,7 @@ func runCheck(root string, stdout io.Writer) error {
 	if len(mismatches) > 0 {
 		return fmt.Errorf("client version drift (source of truth config.go = %q):\n%s\nrun: go run ./cmd/client-version -set %s", want, join(mismatches), want)
 	}
-	fmt.Fprintf(stdout, "client version consistent: %s\n", want)
+	_, _ = fmt.Fprintf(stdout, "client version consistent: %s\n", want)
 	return nil
 }
 
@@ -100,12 +100,12 @@ func runSet(root, version string, stdout io.Writer) error {
 		}
 		switch {
 		case !changed:
-			fmt.Fprintf(stdout, "  %s already %s\n", s.path, version)
+			_, _ = fmt.Fprintf(stdout, "  %s already %s\n", s.path, version)
 		default:
-			fmt.Fprintf(stdout, "  %s %s -> %s\n", s.path, old, version)
+			_, _ = fmt.Fprintf(stdout, "  %s %s -> %s\n", s.path, old, version)
 		}
 	}
-	fmt.Fprintf(stdout, "client version set to %s\n", version)
+	_, _ = fmt.Fprintf(stdout, "client version set to %s\n", version)
 	return nil
 }
 
