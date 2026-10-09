@@ -6,8 +6,8 @@ metadata:
     {{- include "ai-proxy.labels" . | nindent 4 }}
 data:
   config.yaml: |
-    upstream_url: {{ required "config.upstream_url is required" .Values.config.upstream_url | quote }}
-    rotation_margin_seconds: {{ .Values.config.rotation_margin_seconds }}
-    {{- with .Values.config.client_version }}
+    upstream_url: {{ required "config.upstreamUrl is required" .Values.config.upstreamUrl | quote }}
+    rotation_margin_seconds: {{ .Values.config.rotationMarginSeconds }}
+    {{- with .Values.config.clientVersion }}
     client_version: {{ . | quote }}
     {{- end }}

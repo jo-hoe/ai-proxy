@@ -19,6 +19,7 @@ LOCAL_REGISTRY      := localhost:5000
 LOCAL_REGISTRY_HELM := registry.localhost:5000
 
 .PHONY: build up down logs status test vet lint push-token get-token run-local \
+        bump-client-version check-client-version \
         start-cluster stop-k3d restart-k3d push-k3d start-k3d upgrade-k3d uninstall-k3d \
         generate-helm-docs refresh-models
 
@@ -61,6 +62,12 @@ vet: ## Run go vet
 
 lint: ## Run golangci-lint
 	golangci-lint run ./...
+
+bump-client-version: ## Set the client version everywhere (usage: make bump-client-version VERSION=1.4.8)
+	go run ./cmd/client-version -set "$(VERSION)"
+
+check-client-version: ## Verify the client version is consistent across all files
+	go run ./cmd/client-version -check
 
 refresh-models: ## Refresh docs/providers-and-models.md from the live proxy
 	cd scripts && go run ./refresh-models -doc ../docs/providers-and-models.md

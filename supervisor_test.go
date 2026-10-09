@@ -97,7 +97,7 @@ func TestReverseProxy_InjectsClientVersionHeader(t *testing.T) {
 	}
 	s := &Supervisor{
 		upstream:    u,
-		appVersion:  clientVersionPrefix + "1.4.5",
+		appVersion:  clientVersionPrefix + defaultClientVersion,
 		accessToken: "tok-123",
 	}
 	s.reverseProxy = s.buildReverseProxy()
@@ -109,7 +109,7 @@ func TestReverseProxy_InjectsClientVersionHeader(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rr.Code)
 	}
-	if want := clientVersionPrefix + "1.4.5"; gotAppVersion != want {
+	if want := clientVersionPrefix + defaultClientVersion; gotAppVersion != want {
 		t.Errorf("client version header = %q, want %q", gotAppVersion, want)
 	}
 	if gotAuth != "Bearer tok-123" {

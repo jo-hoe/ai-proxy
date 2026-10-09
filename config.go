@@ -13,7 +13,7 @@ const defaultRotationMargin = 10 * time.Minute
 // defaultClientVersion is the client version reported to the upstream API.
 // The upstream rejects callers below its minimum with HTTP 426; bump this when
 // that minimum rises. Must be valid semver.
-const defaultClientVersion = "1.4.5"
+const defaultClientVersion = "1.4.7"
 
 // Config holds the full application configuration.
 type Config struct {
