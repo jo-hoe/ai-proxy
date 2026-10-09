@@ -18,14 +18,24 @@ The chart supports two modes for supplying the OIDC token:
    `oidc.refreshToken` — or point `oidc.existingSecret` at an existing Secret
    with keys `oidc-endpoint`, `oidc-client-id`, `refresh-token`. The proxy
    auto-activates on startup, so image updates require no manual intervention.
-2. **Manual push**. Deploy with no token, then `POST /token` to the management
-   API. Useful when the token isn't available at deploy time.
+2. **Secretless / manual push**. Deploy with no token, then `POST /token` to the
+   management API. Useful when the token isn't available at deploy time.
 
-When `oidc.persistSecret` is true, the proxy also writes rotated
-refresh tokens back into the mounted Secret via the k8s API, so pod restarts
-survive OIDC providers that rotate refresh tokens on each exchange. Requires
-`oidc.endpoint` or `oidc.existingSecret` to be set — helm will error at install
-time otherwise.
+With `oidc.persistSecret` enabled (**the default**), the proxy writes the pushed
+token and every rotated refresh token back into the chart-rendered Secret via the
+k8s API. This makes the secretless mode **restart-durable**: after a pod restart
+or chart upgrade the proxy re-reads the Secret and re-activates automatically —
+no fresh `POST /token` needed. It requires `rbac.enabled: true` (also the default)
+so the chart can grant a tightly-scoped Role. The Role is limited to `get`/`patch`
+on the single token Secret; `create` is deliberately not granted because it cannot
+be restricted by `resourceNames`, so the chart (not the proxy) owns the Secret.
+Set `oidc.persistSecret: false` to opt out — pushed tokens then live only in
+memory and are lost on restart.
+
+> **Readiness:** the pod's readiness probe is `/healthz`, which reports Ready only
+> once a token is loaded. A pure-secretless pod stays NotReady (and the proxy
+> Service won't route to it) until the first `POST /token`. The management port
+> 7656 remains reachable while NotReady, so the token push still works.
 
 ## Endpoints
 

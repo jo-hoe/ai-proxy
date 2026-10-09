@@ -21,6 +21,12 @@ provide it:
 3. Manual API push (if the secret is unavailable at deploy time):
      curl -X POST http://<mgmt-host>/token \
        -d "endpoint=...&client_id=...&token=..."
+{{- if .Values.oidc.persistSecret }}
+   With persistSecret enabled (the default), the pushed token is written back
+   to the Secret, so the pod re-activates automatically after a restart or
+   chart upgrade — no need to re-push. The pod reports NotReady until the first
+   push (readiness probe is /healthz); the management port stays reachable.
+{{- end }}
 
 ── Endpoints ───────────────────────────────────────────────────────────────────
 {{- if .Values.ingress.enabled }}

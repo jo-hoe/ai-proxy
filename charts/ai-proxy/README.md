@@ -2,9 +2,9 @@
 
 Helm chart for jo-hoe/ai-proxy — OIDC-auth reverse proxy for LLM APIs.
 
-![Version: 0.5.6](https://img.shields.io/badge/Version-0.5.6-informational?style=flat-square) 
+![Version: 0.9.0](https://img.shields.io/badge/Version-0.9.0-informational?style=flat-square) 
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) 
-![AppVersion: 0.6.3](https://img.shields.io/badge/AppVersion-0.6.3-informational?style=flat-square) 
+![AppVersion: 0.9.0](https://img.shields.io/badge/AppVersion-0.9.0-informational?style=flat-square) 
 
 ## Overview
 
@@ -19,14 +19,24 @@ The chart supports two modes for supplying the OIDC token:
    `oidc.refreshToken` — or point `oidc.existingSecret` at an existing Secret
    with keys `oidc-endpoint`, `oidc-client-id`, `refresh-token`. The proxy
    auto-activates on startup, so image updates require no manual intervention.
-2. **Manual push**. Deploy with no token, then `POST /token` to the management
-   API. Useful when the token isn't available at deploy time.
+2. **Secretless / manual push**. Deploy with no token, then `POST /token` to the
+   management API. Useful when the token isn't available at deploy time.
 
-When `oidc.persistSecret` is true, the proxy also writes rotated
-refresh tokens back into the mounted Secret via the k8s API, so pod restarts
-survive OIDC providers that rotate refresh tokens on each exchange. Requires
-`oidc.endpoint` or `oidc.existingSecret` to be set — helm will error at install
-time otherwise.
+With `oidc.persistSecret` enabled (**the default**), the proxy writes the pushed
+token and every rotated refresh token back into the chart-rendered Secret via the
+k8s API. This makes the secretless mode **restart-durable**: after a pod restart
+or chart upgrade the proxy re-reads the Secret and re-activates automatically —
+no fresh `POST /token` needed. It requires `rbac.enabled: true` (also the default)
+so the chart can grant a tightly-scoped Role. The Role is limited to `get`/`patch`
+on the single token Secret; `create` is deliberately not granted because it cannot
+be restricted by `resourceNames`, so the chart (not the proxy) owns the Secret.
+Set `oidc.persistSecret: false` to opt out — pushed tokens then live only in
+memory and are lost on restart.
+
+> **Readiness:** the pod's readiness probe is `/healthz`, which reports Ready only
+> once a token is loaded. A pure-secretless pod stays NotReady (and the proxy
+> Service won't route to it) until the first `POST /token`. The management port
+> 7656 remains reachable while NotReady, so the token push still works.
 
 ## Endpoints
 
@@ -70,7 +80,7 @@ helm install ai-proxy oci://ghcr.io/jo-hoe/charts/ai-proxy \
 | oidc.clientId | string | `""` | OAuth client ID. Only used when `existingSecret` is empty. |
 | oidc.endpoint | string | `""` | OIDC token endpoint URL. Only used when `existingSecret` is empty. |
 | oidc.existingSecret | string | `""` | Reference a pre-existing Secret with keys `oidc-endpoint`, `oidc-client-id`, `refresh-token`. Takes precedence over the inline values. |
-| oidc.persistSecret | bool | `false` | When true, the proxy patches the mounted Secret with the latest refresh token after every rotation, so pod restarts survive across an unlimited number of rotations. Requires `rbac.enabled: true`. Only valid when `oidc.endpoint` or `oidc.existingSecret` is set — helm will error otherwise. |
+| oidc.persistSecret | bool | `true` | When true (default), the proxy patches the mounted Secret with the latest credentials after every token push and rotation, so the pod re-activates after a restart or chart upgrade without a fresh POST /token. This makes a secretless deploy restart-durable. Requires `rbac.enabled: true`. Set to false to opt out (pushed tokens then live only in memory and are lost on restart). |
 | oidc.refreshToken | string | `""` | Refresh token. Only used when `existingSecret` is empty. For dev/testing only — prefer `existingSecret` in production. |
 | rbac.enabled | bool | `true` | Create ServiceAccount + Role + RoleBinding. Set to false if your cluster provisions these externally. |
 | replicaCount | int | `1` | Number of proxy replicas. |

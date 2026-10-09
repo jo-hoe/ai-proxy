@@ -115,19 +115,32 @@ func resolveNamespace() (string, error) {
 	return strings.TrimSpace(string(nsBytes)), nil
 }
 
-// PatchRefreshToken updates the `refresh-token` key of the Secret via a
-// strategic merge patch. Values in Secret.data are base64-encoded per
-// the k8s API contract.
-func (p *SecretPatcher) PatchRefreshToken(ctx context.Context, refreshToken string) error {
+// PatchCredentials updates the `oidc-endpoint`, `oidc-client-id`, and
+// `refresh-token` keys of the Secret via a strategic merge patch. Values in
+// Secret.data are base64-encoded per the k8s API contract. Empty fields are
+// omitted so a missing value never nulls an existing key — important because
+// in secretless mode the chart renders the Secret without any data keys, and
+// the proxy fills them in at runtime.
+func (p *SecretPatcher) PatchCredentials(ctx context.Context, endpoint, clientID, refreshToken string) error {
 	if p == nil {
 		return nil
 	}
 
-	body, err := json.Marshal(map[string]any{
-		"data": map[string]string{
-			"refresh-token": base64.StdEncoding.EncodeToString([]byte(refreshToken)),
-		},
-	})
+	data := map[string]string{}
+	if endpoint != "" {
+		data["oidc-endpoint"] = base64.StdEncoding.EncodeToString([]byte(endpoint))
+	}
+	if clientID != "" {
+		data["oidc-client-id"] = base64.StdEncoding.EncodeToString([]byte(clientID))
+	}
+	if refreshToken != "" {
+		data["refresh-token"] = base64.StdEncoding.EncodeToString([]byte(refreshToken))
+	}
+	if len(data) == 0 {
+		return nil
+	}
+
+	body, err := json.Marshal(map[string]any{"data": data})
 	if err != nil {
 		return fmt.Errorf("marshal patch body: %w", err)
 	}

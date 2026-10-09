@@ -53,8 +53,11 @@ config:
   clientVersion: "1.4.7"
 
 # OIDC credentials are mounted at /run/secrets/ so the proxy activates on
-# startup without a manual POST /token. If left unset, the proxy still starts
-# and waits for a token push via the management API.
+# startup without a manual POST /token. If left unset (secretless deploy),
+# the proxy starts and waits for a token push via the management API — and,
+# with persistSecret enabled (the default), writes that pushed token back to
+# the chart-rendered Secret so the pod re-activates automatically after a
+# restart or chart upgrade.
 oidc:
   # -- Reference a pre-existing Secret with keys `oidc-endpoint`, `oidc-client-id`, `refresh-token`. Takes precedence over the inline values.
   existingSecret: ""
@@ -64,8 +67,8 @@ oidc:
   clientId: ""
   # -- Refresh token. Only used when `existingSecret` is empty. For dev/testing only — prefer `existingSecret` in production.
   refreshToken: ""
-  # -- When true, the proxy patches the mounted Secret with the latest refresh token after every rotation, so pod restarts survive across an unlimited number of rotations. Requires `rbac.enabled: true`. Only valid when `oidc.endpoint` or `oidc.existingSecret` is set — helm will error otherwise.
-  persistSecret: false
+  # -- When true (default), the proxy patches the mounted Secret with the latest credentials after every token push and rotation, so the pod re-activates after a restart or chart upgrade without a fresh POST /token. This makes a secretless deploy restart-durable. Requires `rbac.enabled: true`. Set to false to opt out (pushed tokens then live only in memory and are lost on restart).
+  persistSecret: true
 
 # RBAC is required only when `oidc.persistSecret` is true. Creates a
 # ServiceAccount, Role, and RoleBinding scoped to `get`/`patch` on the single

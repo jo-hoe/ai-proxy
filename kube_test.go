@@ -35,7 +35,7 @@ func TestNewSecretPatcher_disabledWhenNotInCluster(t *testing.T) {
 	}
 }
 
-func TestPatchRefreshToken_success(t *testing.T) {
+func TestPatchCredentials_success(t *testing.T) {
 	var gotMethod, gotPath, gotAuth, gotContentType string
 	var gotBody []byte
 
@@ -59,8 +59,8 @@ func TestPatchRefreshToken_success(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	if err := p.PatchRefreshToken(ctx, "new-refresh-token"); err != nil {
-		t.Fatalf("PatchRefreshToken: %v", err)
+	if err := p.PatchCredentials(ctx, "https://oidc.example/token", "client-123", "new-refresh-token"); err != nil {
+		t.Fatalf("PatchCredentials: %v", err)
 	}
 
 	if gotMethod != "PATCH" {
@@ -82,13 +82,57 @@ func TestPatchRefreshToken_success(t *testing.T) {
 	if err := json.Unmarshal(gotBody, &parsed); err != nil {
 		t.Fatalf("decode body: %v", err)
 	}
-	want := base64.StdEncoding.EncodeToString([]byte("new-refresh-token"))
-	if parsed.Data["refresh-token"] != want {
-		t.Errorf("data.refresh-token = %q, want %q", parsed.Data["refresh-token"], want)
+	for key, raw := range map[string]string{
+		"oidc-endpoint":  "https://oidc.example/token",
+		"oidc-client-id": "client-123",
+		"refresh-token":  "new-refresh-token",
+	} {
+		want := base64.StdEncoding.EncodeToString([]byte(raw))
+		if parsed.Data[key] != want {
+			t.Errorf("data.%s = %q, want %q", key, parsed.Data[key], want)
+		}
 	}
 }
 
-func TestPatchRefreshToken_errorOnNon2xx(t *testing.T) {
+func TestPatchCredentials_omitsEmptyFields(t *testing.T) {
+	var gotBody []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotBody, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	p := &SecretPatcher{
+		apiURL:    srv.URL,
+		namespace: "default",
+		secret:    "ai-proxy-token",
+		token:     "sa-token",
+		client:    srv.Client(),
+	}
+	// Only the refresh token is set; endpoint and client id are empty and must
+	// be omitted so the patch never nulls existing keys in the Secret.
+	if err := p.PatchCredentials(context.Background(), "", "", "rt-only"); err != nil {
+		t.Fatalf("PatchCredentials: %v", err)
+	}
+
+	var parsed struct {
+		Data map[string]string `json:"data"`
+	}
+	if err := json.Unmarshal(gotBody, &parsed); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	if _, ok := parsed.Data["oidc-endpoint"]; ok {
+		t.Error("expected oidc-endpoint to be omitted when empty")
+	}
+	if _, ok := parsed.Data["oidc-client-id"]; ok {
+		t.Error("expected oidc-client-id to be omitted when empty")
+	}
+	if parsed.Data["refresh-token"] != base64.StdEncoding.EncodeToString([]byte("rt-only")) {
+		t.Errorf("refresh-token = %q", parsed.Data["refresh-token"])
+	}
+}
+
+func TestPatchCredentials_errorOnNon2xx(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 		_, _ = w.Write([]byte(`{"kind":"Status","message":"forbidden"}`))
@@ -102,7 +146,7 @@ func TestPatchRefreshToken_errorOnNon2xx(t *testing.T) {
 		token:     "sa-token",
 		client:    srv.Client(),
 	}
-	err := p.PatchRefreshToken(context.Background(), "rt")
+	err := p.PatchCredentials(context.Background(), "ep", "cid", "rt")
 	if err == nil {
 		t.Fatal("expected error on 403 response")
 	}
@@ -111,10 +155,10 @@ func TestPatchRefreshToken_errorOnNon2xx(t *testing.T) {
 	}
 }
 
-func TestPatchRefreshToken_nilPatcher(t *testing.T) {
+func TestPatchCredentials_nilPatcher(t *testing.T) {
 	// Nil patcher must be a safe no-op — supervisor callers rely on this.
 	var p *SecretPatcher
-	if err := p.PatchRefreshToken(context.Background(), "rt"); err != nil {
+	if err := p.PatchCredentials(context.Background(), "ep", "cid", "rt"); err != nil {
 		t.Errorf("nil patcher returned error: %v", err)
 	}
 }

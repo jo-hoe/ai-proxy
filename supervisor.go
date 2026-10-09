@@ -26,7 +26,7 @@ const (
 // secretPatcher is the subset of *SecretPatcher used by Supervisor. Enables
 // nil safety (nil implementations swallow calls) and test injection.
 type secretPatcher interface {
-	PatchRefreshToken(ctx context.Context, refreshToken string) error
+	PatchCredentials(ctx context.Context, endpoint, clientID, refreshToken string) error
 }
 
 // ProxyStatus is the current state of the supervisor.
@@ -67,7 +67,9 @@ type Supervisor struct {
 	lastRotationAt  time.Time
 	nextRotationAt  time.Time // when the next proactive rotation is scheduled
 	tokenStale      bool   // set when rotation gets invalid_grant; cleared by UpdateToken
-	lastPersistedRT string // last refresh token successfully patched into the k8s Secret
+	lastPersistedEP  string // last oidc endpoint successfully patched into the k8s Secret
+	lastPersistedCID string // last client id successfully patched into the k8s Secret
+	lastPersistedRT  string // last refresh token successfully patched into the k8s Secret
 }
 
 // newSupervisor constructs a Supervisor. Call UpdateToken to activate.
@@ -189,6 +191,8 @@ func (s *Supervisor) UpdateToken(endpoint, clientID, refreshToken string) error 
 	nextAt := time.Now().Add(s.nextRotation(tr.ExpiresAt))
 	s.nextRotationAt = nextAt
 	rtToPersist := s.refreshToken
+	epToPersist := s.oidcEndpoint
+	cidToPersist := s.clientID
 	s.mu.Unlock()
 
 	if wasStale {
@@ -205,7 +209,7 @@ func (s *Supervisor) UpdateToken(endpoint, clientID, refreshToken string) error 
 		}
 		s.resetCh <- tr.ExpiresAt
 	}
-	s.persistIfChanged(rtToPersist)
+	s.persistCredentialsIfChanged(epToPersist, cidToPersist, rtToPersist)
 	slog.Info("supervisor: token updated", "expires_at", tr.ExpiresAt, "next_rotation_at", nextAt)
 	return nil
 }
@@ -353,35 +357,41 @@ func (s *Supervisor) rotate() {
 	s.lastRotationAt = time.Now()
 	rtToPersist := s.refreshToken
 	s.mu.Unlock()
-	s.persistIfChanged(rtToPersist)
+	s.persistCredentialsIfChanged(ep, cid, rtToPersist)
 	slog.Info("supervisor: token rotated", "expires_at", tr.ExpiresAt)
 }
 
-// persistIfChanged patches the k8s Secret when the refresh token differs
-// from the last successfully persisted value. Best-effort: patch failures
-// are logged but don't affect the in-memory token or the rotation loop.
-func (s *Supervisor) persistIfChanged(refreshToken string) {
+// persistCredentialsIfChanged patches the k8s Secret when any of the three
+// credential fields differs from the last successfully persisted values. All
+// three keys (endpoint, client-id, refresh-token) are needed so a restarted
+// pod can re-activate from the Secret alone. Best-effort: patch failures are
+// logged but don't affect the in-memory token or the rotation loop.
+func (s *Supervisor) persistCredentialsIfChanged(endpoint, clientID, refreshToken string) {
 	if s.patcher == nil || refreshToken == "" {
 		return
 	}
 	s.mu.RLock()
-	unchanged := refreshToken == s.lastPersistedRT
+	unchanged := refreshToken == s.lastPersistedRT &&
+		endpoint == s.lastPersistedEP &&
+		clientID == s.lastPersistedCID
 	s.mu.RUnlock()
 	if unchanged {
-		slog.Debug("supervisor: refresh token unchanged, skipping persist")
+		slog.Debug("supervisor: credentials unchanged, skipping persist")
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), secretPatchTimeout)
 	defer cancel()
-	if err := s.patcher.PatchRefreshToken(ctx, refreshToken); err != nil {
-		slog.Warn("supervisor: failed to persist refresh token to k8s Secret", "err", err)
+	if err := s.patcher.PatchCredentials(ctx, endpoint, clientID, refreshToken); err != nil {
+		slog.Warn("supervisor: failed to persist credentials to k8s Secret", "err", err)
 		return
 	}
 	s.mu.Lock()
+	s.lastPersistedEP = endpoint
+	s.lastPersistedCID = clientID
 	s.lastPersistedRT = refreshToken
 	s.mu.Unlock()
-	slog.Info("supervisor: refresh token persisted to k8s Secret", "secret", s.persistSecret)
+	slog.Info("supervisor: credentials persisted to k8s Secret", "secret", s.persistSecret)
 }
 
 // isInvalidGrant reports whether the error is an OIDC invalid_grant response.

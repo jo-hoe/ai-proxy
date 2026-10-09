@@ -6,7 +6,10 @@ metadata:
   labels:
     {{- include "ai-proxy.labels" . | nindent 4 }}
 ## Tightly scoped: only the single Secret backing the proxy's token, only
-## `get` and `patch`. No list, no watch, no other resources.
+## `get` and `patch`. No list, no watch, no other resources. `create` is
+## deliberately NOT granted: it cannot be restricted by resourceNames, so
+## granting it would require a namespace-wide `create secrets` permission.
+## The chart owns the Secret (see secret.yaml); the proxy only patches it.
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
