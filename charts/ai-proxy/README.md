@@ -2,9 +2,9 @@
 
 Helm chart for jo-hoe/ai-proxy — OIDC-auth reverse proxy for LLM APIs.
 
-![Version: 0.9.0](https://img.shields.io/badge/Version-0.9.0-informational?style=flat-square) 
+![Version: 0.9.2](https://img.shields.io/badge/Version-0.9.2-informational?style=flat-square) 
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) 
-![AppVersion: 0.9.0](https://img.shields.io/badge/AppVersion-0.9.0-informational?style=flat-square) 
+![AppVersion: 0.9.2](https://img.shields.io/badge/AppVersion-0.9.2-informational?style=flat-square) 
 
 ## Overview
 
@@ -59,7 +59,7 @@ helm install ai-proxy oci://ghcr.io/jo-hoe/charts/ai-proxy \
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Node/pod affinity rules. |
-| config.clientVersion | string | `"1.4.7"` | Client version reported to the upstream API. The upstream rejects callers below its minimum with HTTP 426; bump this when that minimum rises. Must be valid semver. |
+| config.clientVersion | string | `"1.4.8"` | Client version reported to the upstream API. The upstream rejects callers below its minimum with HTTP 426; bump this when that minimum rises. Must be valid semver. |
 | config.logLevel | string | `"INFO"` | Log level for the proxy. One of: DEBUG, INFO, WARN, ERROR. |
 | config.rotationMarginSeconds | int | `600` | How many seconds before token expiry to trigger a proactive rotation. Increase if your OIDC provider is slow to respond. |
 | config.upstreamUrl | string | `""` | Required. Base URL of the upstream LLM API to proxy to. |
