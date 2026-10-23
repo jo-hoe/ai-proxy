@@ -20,7 +20,7 @@ their base URL.
 - Models: `GET /anthropic/v1/models`
 - Messages: `POST /anthropic/v1/messages`
 
-### Models (as of 2026-09-23)
+### Models (as of 2026-10-23)
 
 | Model ID | Display name |
 |---|---|
@@ -51,7 +51,7 @@ Native OpenAI API. Point OpenAI SDKs at `$BASE/openai/v1` as their base URL.
 - Chat: `POST /openai/v1/chat/completions`
 - Embeddings: `POST /openai/v1/embeddings`
 
-### Models (as of 2026-09-23)
+### Models (as of 2026-10-23)
 
 | Model ID |
 |---|
@@ -64,6 +64,9 @@ Native OpenAI API. Point OpenAI SDKs at `$BASE/openai/v1` as their base URL.
 | `gpt-5.6-luna` |
 | `gpt-5.6-sol` |
 | `gpt-5.6-terra` |
+| `gpt-6-astra` |
+| `gpt-6-luna` |
+| `gpt-6.1-sol` |
 | `text-embedding-3-large` |
 | `text-embedding-3-small` |
 
@@ -76,7 +79,7 @@ Native Google Generative Language API. Note the version is `v1beta`, not `v1`.
 - Token count: `POST /gemini/v1beta/models/<model>:countTokens`
 - Embed: `POST /gemini/v1beta/models/<model>:embedContent`
 
-### Models (as of 2026-09-23)
+### Models (as of 2026-10-23)
 
 | Model ID | Input tokens | Output tokens | Methods |
 |---|---|---|---|
@@ -85,26 +88,16 @@ Native Google Generative Language API. Note the version is `v1beta`, not `v1`.
 | `gemini-2.5-pro` | 1,000,000 | 65,536 | generateContent, countTokens, createCachedContent |
 | `gemini-3.1-flash-lite` | 1,000,000 | 65,536 | generateContent, countTokens, createCachedContent |
 | `gemini-3.5-flash` | 1,000,000 | 65,536 | generateContent, countTokens, createCachedContent |
+| `gemini-3.8-flash` | 1,000,000 | 65,536 | generateContent, countTokens, createCachedContent |
 | `gemini-embedding` | 1,048,576 | — | embedContent |
 
 ## Refreshing this document
 
-There is no cross-provider catalogue endpoint on the upstream; each provider
-must be queried on its own path. To refresh the tables above:
+All providers are listed by a single LiteLLM catalogue endpoint:
 
 ```bash
-curl -s $BASE/anthropic/v1/models  | jq
-curl -s $BASE/openai/v1/models     | jq
-curl -s $BASE/gemini/v1beta/models | jq
+curl -s $BASE/litellm/v1/models | jq '.data[].id'
 ```
 
 Update the "as of" date at the top of each provider section when you refresh.
 
-## Providers not currently exposed
-
-The following provider prefixes were probed on 2026-07-05 and returned 404,
-i.e. they are **not** available through the upstream:
-
-Azure OpenAI, AWS Bedrock, Vertex AI, Mistral, Cohere, Meta / Llama,
-AI21, Aleph Alpha, NVIDIA / NIM, watsonx / IBM, DeepSeek, xAI / Grok,
-Databricks, Fireworks, Groq, Together, Perplexity.
