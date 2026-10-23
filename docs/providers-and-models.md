@@ -7,7 +7,7 @@ you can point existing SDKs at the proxy by only changing the base URL.
 
 The **paths are stable** — the `/<provider>/<version>/...` prefix does not
 change. The **model catalogue does change** over time; the tables below are
-snapshots. Re-run the listed `curl` commands to get the current set.
+snapshots.
 
 In the examples below, `$BASE` is the proxy's base URL (whatever host it is
 deployed to).
@@ -20,28 +20,17 @@ their base URL.
 - Models: `GET /anthropic/v1/models`
 - Messages: `POST /anthropic/v1/messages`
 
-### Models (as of 2026-10-23)
+### Models
 
-| Model ID | Display name |
-|---|---|
-| `anthropic--claude-4.5-haiku` | Claude 4.5 Haiku |
-| `anthropic--claude-4.5-opus` | Claude 4.5 Opus |
-| `anthropic--claude-4.5-sonnet` | Claude 4.5 Sonnet |
-| `anthropic--claude-4.6-opus` | Claude 4.6 Opus |
-| `anthropic--claude-4.6-sonnet` | Claude 4.6 Sonnet |
-| `anthropic--claude-4.7-opus` | Claude 4.7 Opus |
-| `anthropic--claude-4.8-opus` | Claude 4.8 Opus |
-
-The Messages endpoint also accepts short aliases that resolve to a dated
-snapshot in the response (as of 2026-07-05):
-
-| Alias | Resolves to |
-|---|---|
-| `claude-haiku-4-5` | `claude-haiku-4-5-20251001` |
-| `claude-sonnet-4-5` | `claude-sonnet-4-5-20250929` |
-| `claude-opus-4-5` | `claude-opus-4-5-20251101` |
-| `claude-sonnet-4-6` | `claude-sonnet-4-6` |
-| `claude-opus-4-6` | `claude-opus-4-6` |
+| Model ID |
+|---|
+| `anthropic--claude-4.5-haiku` |
+| `anthropic--claude-4.5-opus` |
+| `anthropic--claude-4.5-sonnet` |
+| `anthropic--claude-4.6-opus` |
+| `anthropic--claude-4.6-sonnet` |
+| `anthropic--claude-4.7-opus` |
+| `anthropic--claude-4.8-opus` |
 
 ## OpenAI — `/openai/v1/...`
 
@@ -51,7 +40,7 @@ Native OpenAI API. Point OpenAI SDKs at `$BASE/openai/v1` as their base URL.
 - Chat: `POST /openai/v1/chat/completions`
 - Embeddings: `POST /openai/v1/embeddings`
 
-### Models (as of 2026-10-23)
+### Models
 
 | Model ID |
 |---|
@@ -79,17 +68,17 @@ Native Google Generative Language API. Note the version is `v1beta`, not `v1`.
 - Token count: `POST /gemini/v1beta/models/<model>:countTokens`
 - Embed: `POST /gemini/v1beta/models/<model>:embedContent`
 
-### Models (as of 2026-10-23)
+### Models
 
-| Model ID | Input tokens | Output tokens | Methods |
-|---|---|---|---|
-| `gemini-2.5-flash` | 1,000,000 | 65,536 | generateContent, countTokens, createCachedContent |
-| `gemini-2.5-flash-lite` | 1,000,000 | 65,536 | generateContent, countTokens, createCachedContent |
-| `gemini-2.5-pro` | 1,000,000 | 65,536 | generateContent, countTokens, createCachedContent |
-| `gemini-3.1-flash-lite` | 1,000,000 | 65,536 | generateContent, countTokens, createCachedContent |
-| `gemini-3.5-flash` | 1,000,000 | 65,536 | generateContent, countTokens, createCachedContent |
-| `gemini-3.8-flash` | 1,000,000 | 65,536 | generateContent, countTokens, createCachedContent |
-| `gemini-embedding` | 1,048,576 | — | embedContent |
+| Model ID |
+|---|
+| `gemini-2.5-flash` |
+| `gemini-2.5-flash-lite` |
+| `gemini-2.5-pro` |
+| `gemini-3.1-flash-lite` |
+| `gemini-3.5-flash` |
+| `gemini-3.8-flash` |
+| `gemini-embedding` |
 
 ## Refreshing this document
 
@@ -98,6 +87,3 @@ All providers are listed by a single LiteLLM catalogue endpoint:
 ```bash
 curl -s $BASE/litellm/v1/models | jq '.data[].id'
 ```
-
-Update the "as of" date at the top of each provider section when you refresh.
-
