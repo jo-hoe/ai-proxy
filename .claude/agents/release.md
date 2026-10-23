@@ -275,3 +275,20 @@ Confirm:
 - Chart release: `ai-proxy-<new-version>` on jo-hoe/ai-proxy
 - Helm repo: `https://jo-hoe.github.io/ai-proxy` → `ai-proxy/ai-proxy --version <new-version>`
 - Image: `ghcr.io/jo-hoe/ai-proxy:v<app-version>` (full release) or `unchanged at v<current-app-version>` (chart-only)
+
+### Step 6 — Clean up the release branch
+
+Report: `[Step 6/5] Cleaning up release branch...`
+
+The release branch was squash-merged, so git will report it as "not fully merged"
+and refuse a normal `git branch -d`. Force-delete both the local and remote copies:
+
+```bash
+git branch -D release/v<new-version>
+git push origin --delete release/v<new-version>
+```
+
+If the local branch no longer exists (e.g. it was never checked out locally),
+skip the `git branch -D` line — only the remote delete matters.
+
+Report: `[Step 6/5] ✓ Branch release/v<new-version> deleted`
