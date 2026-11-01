@@ -1,8 +1,9 @@
-//go:build windows
+//go:build windows || darwin
 
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -75,7 +76,12 @@ func postToken(apiURL, endpoint, clientID, token string) error {
 		"client_id": {clientID},
 		"token":     {token},
 	}
-	resp, err := client.PostForm(apiURL, body)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, apiURL, strings.NewReader(body.Encode()))
+	if err != nil {
+		return fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("post token to %s: %w", apiURL, err)
 	}

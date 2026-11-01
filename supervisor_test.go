@@ -69,7 +69,7 @@ func TestPersistCredentialsIfChanged_patchesWhenEndpointChangesButRTSame(t *test
 	}
 }
 
-func TestPersistCredentialsIfChanged_nilPatcher(t *testing.T) {
+func TestPersistCredentialsIfChanged_nilPatcher(_ *testing.T) {
 	s := &Supervisor{}
 	// Must not panic when patcher is nil (Docker Compose / bare metal).
 	s.persistCredentialsIfChanged("ep-1", "cid-1", "rt-1")
@@ -120,7 +120,7 @@ func TestReverseProxy_InjectsClientVersionHeader(t *testing.T) {
 	}
 	s.reverseProxy = s.buildReverseProxy()
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/messages", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v1/messages", nil)
 	rr := httptest.NewRecorder()
 	s.ServeHTTP(rr, req)
 

@@ -1,6 +1,7 @@
-// Package wincred reads credentials from Windows Credential Manager.
-// The Store interface abstracts the Win32 layer so callers can be tested
-// on any OS using a mock.
+// Package wincred reads credentials from the OS credential store.
+// On Windows it uses the Windows Credential Manager; on macOS it uses
+// the Keychain via the `security` command-line tool. The Store interface
+// abstracts the platform layer so callers can be tested on any OS using a mock.
 package wincred
 
 import (

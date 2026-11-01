@@ -5,6 +5,7 @@ package main
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -170,7 +171,7 @@ func extractFromTar(archivePath, entryName, destPath string) error {
 	tr := tar.NewReader(gz)
 	for {
 		hdr, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -216,24 +217,24 @@ func dockerRun(opts *options, tokenWinPath string) error {
 }
 
 func dockerLogs(container string) {
-	out, err := exec.Command("docker", "logs", "--tail", "8", container).CombinedOutput()
+	out, err := exec.CommandContext(context.Background(), "docker", "logs", "--tail", "8", container).CombinedOutput()
 	if err == nil {
 		fmt.Print(string(out))
 	}
 }
 
 func imageExists(image string) bool {
-	err := exec.Command("docker", "image", "inspect", image).Run()
+	err := exec.CommandContext(context.Background(), "docker", "image", "inspect", image).Run()
 	return err == nil
 }
 
 func containerExists(container string) bool {
-	err := exec.Command("docker", "inspect", container).Run()
+	err := exec.CommandContext(context.Background(), "docker", "inspect", container).Run()
 	return err == nil
 }
 
 func runCmd(name string, args ...string) error {
-	cmd := exec.Command(name, args...)
+	cmd := exec.CommandContext(context.Background(), name, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -264,7 +265,7 @@ func loadConfig() (*configData, error) {
 	configPath := filepath.Join(filepath.Dir(exe), "config.yaml")
 	cfg, err := parseConfigFile(configPath)
 	if err != nil {
-		return &configData{proxyPort: 7655}, nil
+		return &configData{proxyPort: 7655}, nil //nolint:nilerr // missing config is not an error; fall back to defaults
 	}
 	return &configData{proxyPort: cfg.Proxy.Port}, nil
 }

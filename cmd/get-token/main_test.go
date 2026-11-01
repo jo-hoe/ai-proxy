@@ -133,5 +133,3 @@ func TestWriteTokenFile(t *testing.T) {
 		t.Errorf("stat token file: %v", err)
 	}
 }
-
-

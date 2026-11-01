@@ -31,12 +31,12 @@ type secretPatcher interface {
 
 // ProxyStatus is the current state of the supervisor.
 type ProxyStatus struct {
-	Ready          bool      `json:"ready"`
-	TokenExpiresAt time.Time `json:"token_expires_at,omitzero"`
+	Ready           bool      `json:"ready"`
+	TokenExpiresAt  time.Time `json:"token_expires_at,omitzero"`
 	LastRefreshedAt time.Time `json:"last_refreshed_at,omitzero"`
-	LastRotatedAt  time.Time `json:"last_rotated_at,omitzero"`
-	NextRotationAt time.Time `json:"next_rotation_at,omitzero"`
-	RotationError  string    `json:"rotation_error,omitempty"`
+	LastRotatedAt   time.Time `json:"last_rotated_at,omitzero"`
+	NextRotationAt  time.Time `json:"next_rotation_at,omitzero"`
+	RotationError   string    `json:"rotation_error,omitempty"`
 }
 
 // Supervisor manages OIDC token rotation and proxies requests to the upstream
@@ -63,13 +63,13 @@ type Supervisor struct {
 	resetCh      chan time.Time // signals rotationLoop to reschedule with a new expiry
 	stopped      bool
 
-	lastRotationErr string
-	lastRotationAt  time.Time
-	nextRotationAt  time.Time // when the next proactive rotation is scheduled
-	tokenStale      bool   // set when rotation gets invalid_grant; cleared by UpdateToken
-	lastPersistedEP  string // last oidc endpoint successfully patched into the k8s Secret
-	lastPersistedCID string // last client id successfully patched into the k8s Secret
-	lastPersistedRT  string // last refresh token successfully patched into the k8s Secret
+	lastRotationErr  string
+	lastRotationAt   time.Time
+	nextRotationAt   time.Time // when the next proactive rotation is scheduled
+	tokenStale       bool      // set when rotation gets invalid_grant; cleared by UpdateToken
+	lastPersistedEP  string    // last oidc endpoint successfully patched into the k8s Secret
+	lastPersistedCID string    // last client id successfully patched into the k8s Secret
+	lastPersistedRT  string    // last refresh token successfully patched into the k8s Secret
 }
 
 // newSupervisor constructs a Supervisor. Call UpdateToken to activate.

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -46,11 +47,12 @@ func (c *OIDCClient) Exchange(endpoint, clientID, refreshToken string) (*TokenRe
 		"client_id":     {clientID},
 		"refresh_token": {refreshToken},
 	}
-	resp, err := c.http.Post(
-		endpoint,
-		"application/x-www-form-urlencoded",
-		strings.NewReader(body.Encode()),
-	)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, endpoint, strings.NewReader(body.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("oidc exchange: build request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := c.http.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("oidc exchange: %w", err)
 	}

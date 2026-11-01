@@ -30,7 +30,7 @@ func (m *mockSupervisor) Healthy() bool       { return m.healthyResp }
 func TestAPI_PostToken_Success(t *testing.T) {
 	api := newAPI(&mockSupervisor{})
 
-	req := httptest.NewRequest(http.MethodPost, "/token",
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/token",
 		strings.NewReader("endpoint=https://oidc.example.com/token&client_id=my-client&token=my-refresh-token"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
@@ -45,7 +45,7 @@ func TestAPI_PostToken_Success(t *testing.T) {
 func TestAPI_PostToken_MissingToken(t *testing.T) {
 	api := newAPI(&mockSupervisor{})
 
-	req := httptest.NewRequest(http.MethodPost, "/token",
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/token",
 		strings.NewReader("endpoint=https://oidc.example.com/token&client_id=my-client"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
@@ -60,7 +60,7 @@ func TestAPI_PostToken_MissingToken(t *testing.T) {
 func TestAPI_PostToken_MissingClientID(t *testing.T) {
 	api := newAPI(&mockSupervisor{})
 
-	req := httptest.NewRequest(http.MethodPost, "/token",
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/token",
 		strings.NewReader("endpoint=https://oidc.example.com/token&token=my-refresh-token"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
@@ -75,7 +75,7 @@ func TestAPI_PostToken_MissingClientID(t *testing.T) {
 func TestAPI_PostToken_MissingEndpoint(t *testing.T) {
 	api := newAPI(&mockSupervisor{})
 
-	req := httptest.NewRequest(http.MethodPost, "/token",
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/token",
 		strings.NewReader("client_id=my-client&token=my-refresh-token"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
@@ -90,7 +90,7 @@ func TestAPI_PostToken_MissingEndpoint(t *testing.T) {
 func TestAPI_PostToken_InvalidToken(t *testing.T) {
 	api := newAPI(&mockSupervisor{updateErr: errors.New("oidc exchange: HTTP 401")})
 
-	req := httptest.NewRequest(http.MethodPost, "/token",
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/token",
 		strings.NewReader("endpoint=https://oidc.example.com/token&client_id=my-client&token=bad"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
@@ -106,14 +106,14 @@ func TestAPI_GetStatus_Running(t *testing.T) {
 	now := time.Now().Truncate(time.Second)
 	api := newAPI(&mockSupervisor{
 		statusResp: ProxyStatus{
-			Ready:          true,
-			TokenExpiresAt: now.Add(time.Hour),
+			Ready:           true,
+			TokenExpiresAt:  now.Add(time.Hour),
 			LastRefreshedAt: now,
-			NextRotationAt: now.Add(50 * time.Minute),
+			NextRotationAt:  now.Add(50 * time.Minute),
 		},
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/status", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 	rec := httptest.NewRecorder()
 
 	api.ServeHTTP(rec, req)
@@ -141,7 +141,7 @@ func TestAPI_GetStatus_RotationError(t *testing.T) {
 		},
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/status", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 	rec := httptest.NewRecorder()
 
 	api.ServeHTTP(rec, req)
@@ -163,7 +163,7 @@ func TestAPI_GetStatus_NoRotationError(t *testing.T) {
 		statusResp: ProxyStatus{Ready: true},
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/status", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 	rec := httptest.NewRecorder()
 
 	api.ServeHTTP(rec, req)
@@ -179,7 +179,7 @@ func TestAPI_GetStatus_NoRotationError(t *testing.T) {
 
 func TestAPI_GetHealthz_Healthy(t *testing.T) {
 	api := newAPI(&mockSupervisor{healthyResp: true})
-	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/healthz", nil)
 	rec := httptest.NewRecorder()
 	api.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -189,7 +189,7 @@ func TestAPI_GetHealthz_Healthy(t *testing.T) {
 
 func TestAPI_GetHealthz_Unhealthy(t *testing.T) {
 	api := newAPI(&mockSupervisor{healthyResp: false})
-	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/healthz", nil)
 	rec := httptest.NewRecorder()
 	api.ServeHTTP(rec, req)
 	if rec.Code != http.StatusServiceUnavailable {
@@ -200,7 +200,7 @@ func TestAPI_GetHealthz_Unhealthy(t *testing.T) {
 func TestAPI_GetStatus_NotRunning(t *testing.T) {
 	api := newAPI(&mockSupervisor{statusResp: ProxyStatus{Ready: false}})
 
-	req := httptest.NewRequest(http.MethodGet, "/status", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 	rec := httptest.NewRecorder()
 
 	api.ServeHTTP(rec, req)

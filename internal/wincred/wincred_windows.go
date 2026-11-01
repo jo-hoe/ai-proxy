@@ -3,6 +3,7 @@
 package wincred
 
 import (
+	"errors"
 	"fmt"
 	"syscall"
 	"unsafe"
@@ -52,7 +53,7 @@ func (WindowsStore) FindByPrefix(prefix string) ([]Credential, error) {
 		uintptr(unsafe.Pointer(&credArrayPtr)),
 	)
 	if r == 0 {
-		if e == syscall.ERROR_NOT_FOUND {
+		if errors.Is(e, syscall.ERROR_NOT_FOUND) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("wincred: CredEnumerateW: %w", e)

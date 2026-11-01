@@ -1,3 +1,4 @@
+// Package main is the ai-proxy server entry point.
 package main
 
 import (
@@ -66,19 +67,19 @@ func (a *API) handlePostToken(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleGetStatus returns the current proxy status.
-func (a *API) handleGetStatus(w http.ResponseWriter, r *http.Request) {
+func (a *API) handleGetStatus(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, a.sup.Status())
 }
 
 // handleGetLivez always returns 200 — confirms the process is running.
 // Used as the liveness probe; does not check token state.
-func (a *API) handleGetLivez(w http.ResponseWriter, r *http.Request) {
+func (a *API) handleGetLivez(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 // handleGetHealthz returns 200 when the proxy is ready, 503 otherwise.
 // Suitable for readiness checks — reflects token and health state.
-func (a *API) handleGetHealthz(w http.ResponseWriter, r *http.Request) {
+func (a *API) handleGetHealthz(w http.ResponseWriter, _ *http.Request) {
 	if !a.sup.Healthy() {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unhealthy"})
 		return

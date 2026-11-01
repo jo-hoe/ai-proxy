@@ -1,0 +1,53 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck       # unchecked errors
+    - govet          # suspicious constructs
+    - ineffassign    # ineffectual assignments
+    - staticcheck    # static analysis (includes gosimple)
+    - unused         # unused code
+    - misspell       # common spelling mistakes
+    - revive         # drop-in golint replacement
+    - gosec          # security issues
+    - noctx          # http requests without context
+    - bodyclose      # http response body not closed
+    - errorlint      # error wrapping issues
+    - exhaustive     # missing switch cases on enums
+    - godot          # comment punctuation
+    - nilerr         # returning nil err when err != nil
+    - predeclared    # shadowing predeclared identifiers
+    - unconvert      # unnecessary type conversions
+    - unparam        # unused function parameters
+    - whitespace     # leading/trailing whitespace in blocks
+  settings:
+    revive:
+      rules:
+        - name: exported
+          severity: warning
+    godot:
+      scope: declarations
+    exhaustive:
+      default-signifies-exhaustive: true
+    gosec:
+      excludes:
+        - G101  # "hardcoded credentials" — these are file paths, not secrets
+        - G103  # unsafe calls — required for Win32 syscall layer
+        - G110  # decompression bomb — acceptable in this context
+        - G112  # Slowloris — ReadHeaderTimeout intentionally omitted
+        - G204  # subprocess with variable — docker CLI calls are intentional
+        - G304  # file inclusion via variable — paths come from trusted config
+        - G306  # WriteFile permissions — 0644 is intentional for chart files
+        - G703  # path traversal — paths come from trusted config
+        - G302  # file permissions — 0755 is intentional for executables
+        - G704  # SSRF — OIDC endpoint comes from trusted config
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+issues:
+  max-same-issues: 0
+  max-issues-per-linter: 0
