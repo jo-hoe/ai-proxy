@@ -34,8 +34,6 @@ linters:
       excludes:
         - G101  # "hardcoded credentials" — these are file paths, not secrets
         - G103  # unsafe calls — required for Win32 syscall layer
-        - G110  # decompression bomb — acceptable in this context
-        - G112  # Slowloris — ReadHeaderTimeout intentionally omitted
         - G204  # subprocess with variable — docker CLI calls are intentional
         - G304  # file inclusion via variable — paths come from trusted config
         - G306  # WriteFile permissions — 0644 is intentional for chart files

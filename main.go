@@ -45,12 +45,14 @@ func main() {
 	}
 
 	proxySrv := &http.Server{
-		Addr:    ":" + proxyPort,
-		Handler: sup,
+		Addr:              ":" + proxyPort,
+		Handler:           sup,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 	mgmtSrv := &http.Server{
-		Addr:    ":" + mgmtPort,
-		Handler: newAPI(sup),
+		Addr:              ":" + mgmtPort,
+		Handler:           newAPI(sup),
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	go func() {

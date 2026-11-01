@@ -184,7 +184,7 @@ func extractFromTar(archivePath, entryName, destPath string) error {
 		if err != nil {
 			return fmt.Errorf("create binary: %w", err)
 		}
-		_, copyErr := io.Copy(out, tr)
+		_, copyErr := io.CopyN(out, tr, hdr.Size)
 		closeErr := out.Close()
 		if copyErr != nil {
 			return fmt.Errorf("write binary: %w", copyErr)
