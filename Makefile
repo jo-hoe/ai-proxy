@@ -21,7 +21,7 @@ LOCAL_REGISTRY_HELM := registry.localhost:5000
 .PHONY: build up down logs status test vet lint push-token get-token run-local \
         bump-client-version check-client-version \
         start-cluster stop-k3d restart-k3d push-k3d start-k3d upgrade-k3d uninstall-k3d \
-        generate-helm-docs refresh-models
+        generate-helm-docs generate-docs
 
 ## ── Docker ──────────────────────────────────────────────────────────────────
 
@@ -69,9 +69,6 @@ bump-client-version: ## Set the client version everywhere (usage: make bump-clie
 check-client-version: ## Verify the client version is consistent across all files
 	go run ./cmd/client-version -check
 
-refresh-models: ## Refresh docs/providers-and-models.md from the live proxy
-	cd scripts && go run ./refresh-models -doc ../docs/providers-and-models.md
-
 run-local: ## Build and run the container locally (uses local image tag)
 	IMAGE=proxy:latest $(MAKE) build
 	IMAGE=proxy:latest docker compose up -d
@@ -108,3 +105,6 @@ uninstall-k3d: ## Uninstall Helm release from k3d cluster
 
 generate-helm-docs: ## Regenerate chart README.md via helm-docs (Docker)
 	MSYS_NO_PATHCONV=1 docker run --rm --volume "$(CURDIR)/charts:/helm-docs" jnorwood/helm-docs:latest
+
+generate-docs: generate-helm-docs ## Regenerate chart README + docs/providers-and-models.md from the live proxy
+	cd scripts && go run ./refresh-models -config providers.yaml -doc ../docs/providers-and-models.md

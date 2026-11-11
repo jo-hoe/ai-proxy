@@ -1,22 +1,67 @@
-# Providers whose model tables in docs/providers-and-models.md are auto-refreshed
-# by scripts/refresh-models. Each entry maps a proxy sub-path to a response parser
-# ("format") and the markdown section heading whose table should be regenerated.
+# Source of truth for docs/providers-and-models.md, rendered by
+# scripts/refresh-models. Prose lives here; model tables are fetched live from the
+# proxy at generation time. Run `make generate-docs` to regenerate the doc.
+intro: |
+  ai-proxy is a transparent reverse proxy: whatever path you send is forwarded
+  verbatim to the configured `upstream_url`. The paths below are the ones the
+  current upstream exposes. Each provider preserves its native API shape, so
+  you can point existing SDKs at the proxy by only changing the base URL.
+
+  The **paths are stable** — the `/<provider>/<version>/...` prefix does not
+  change. The **model catalogue does change** over time; the tables below are
+  snapshots.
+
+  In the examples below, `$BASE` is the proxy's base URL (whatever host it is
+  deployed to).
+
+# Providers whose model tables are auto-refreshed. Each entry maps a proxy
+# sub-path to a response parser ("format") and carries the prose rendered above
+# its model table.
 providers:
   - name: Anthropic
     slug: anthropic
     path: /anthropic/v1/models
     format: anthropic
     heading: "Anthropic — `/anthropic/v1/...`"
+    description: |
+      Native Anthropic Messages API. Point Anthropic SDKs at `$BASE/anthropic` as
+      their base URL.
+    endpoints:
+      - "Models: `GET /anthropic/v1/models`"
+      - "Messages: `POST /anthropic/v1/messages`"
   - name: OpenAI
     slug: openai
     path: /openai/v1/models
     format: openai
     heading: "OpenAI — `/openai/v1/...`"
+    description: |
+      Native OpenAI API. Point OpenAI SDKs at `$BASE/openai/v1` as their base URL.
+    endpoints:
+      - "Models: `GET /openai/v1/models`"
+      - "Chat: `POST /openai/v1/chat/completions`"
+      - "Embeddings: `POST /openai/v1/embeddings`"
   - name: Google Gemini
     slug: gemini
     path: /gemini/v1beta/models
     format: gemini
     heading: "Google Gemini — `/gemini/v1beta/...`"
+    description: |
+      Native Google Generative Language API. Note the version is `v1beta`, not `v1`.
+    endpoints:
+      - "Models: `GET /gemini/v1beta/models`"
+      - "Generate: `POST /gemini/v1beta/models/<model>:generateContent`"
+      - "Token count: `POST /gemini/v1beta/models/<model>:countTokens`"
+      - "Embed: `POST /gemini/v1beta/models/<model>:embedContent`"
+
+footer: |
+  ## Refreshing this document
+
+  This document is generated. Do not edit it by hand — edit `scripts/providers.yaml`
+  and run:
+
+  ```bash
+  make generate-docs
+  ```
 
 # Vendor prefixes probed only for existence (200 vs 404). The upstream has no
 # cross-provider catalogue endpoint, so unknown vendors cannot be enumerated —

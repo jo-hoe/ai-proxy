@@ -7,6 +7,8 @@ allowedTools:
   - Bash(git *)
   - Bash(gh *)
   - Bash(helm *)
+  - Bash(make *)
+  - Bash(go *)
   - Bash(grep *)
   - Bash(timeout *)
   - Bash(sleep *)
@@ -72,6 +74,17 @@ git status --short   # also inspect the uncommitted working tree
 - **Chart-only release** — only chart templates/values changed (`charts/`), no app code changes. Bumps only `version`, keeps `appVersion`. No new tag pushed.
 
 Confirm the target version with the user if it is not obvious from the changes.
+
+**Refresh generated docs first.** `docs/providers-and-models.md` is generated from
+the live proxy (model catalogues drift between releases). Regenerate it so the
+release captures the current catalogue, and fold any resulting change into the
+Step 3 PR:
+```bash
+make generate-docs   # needs the live proxy reachable; no-op if already current
+git status --short docs/providers-and-models.md charts/ai-proxy/README.md
+```
+If `make generate-docs` cannot reach the proxy, skip it and note that the doc was
+not refreshed — do not block the release on it.
 
 Report: `[Step 1/5] ✓ Release type: <full|chart-only>, chart version: <new-version>, appVersion: <app-version>`
 

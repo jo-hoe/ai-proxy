@@ -20,17 +20,18 @@ their base URL.
 - Models: `GET /anthropic/v1/models`
 - Messages: `POST /anthropic/v1/messages`
 
-### Models
+### Models (as of 2026-11-11)
 
 | Model ID |
 |---|
-| `anthropic--claude-4.5-haiku` |
-| `anthropic--claude-4.5-opus` |
-| `anthropic--claude-4.5-sonnet` |
-| `anthropic--claude-4.6-opus` |
-| `anthropic--claude-4.6-sonnet` |
-| `anthropic--claude-4.7-opus` |
-| `anthropic--claude-4.8-opus` |
+| `claude-haiku-4-5` |
+| `claude-opus-4-5` |
+| `claude-opus-4-6` |
+| `claude-opus-4-7` |
+| `claude-opus-4-8` |
+| `claude-sonnet-4-5` |
+| `claude-sonnet-4-6` |
+| `claude-sonnet-4-6[1m]` |
 
 ## OpenAI — `/openai/v1/...`
 
@@ -40,7 +41,7 @@ Native OpenAI API. Point OpenAI SDKs at `$BASE/openai/v1` as their base URL.
 - Chat: `POST /openai/v1/chat/completions`
 - Embeddings: `POST /openai/v1/embeddings`
 
-### Models
+### Models (as of 2026-11-11)
 
 | Model ID |
 |---|
@@ -68,7 +69,7 @@ Native Google Generative Language API. Note the version is `v1beta`, not `v1`.
 - Token count: `POST /gemini/v1beta/models/<model>:countTokens`
 - Embed: `POST /gemini/v1beta/models/<model>:embedContent`
 
-### Models
+### Models (as of 2026-11-11)
 
 | Model ID |
 |---|
@@ -80,10 +81,35 @@ Native Google Generative Language API. Note the version is `v1beta`, not `v1`.
 | `gemini-3.8-flash` |
 | `gemini-embedding` |
 
+## Providers not currently exposed
+
+The following vendor prefixes returned a non-2xx status at generation time and
+are not documented above. If one starts responding, it is added automatically on
+the next `make generate-docs`:
+
+- `azure`
+- `bedrock`
+- `vertex`
+- `mistral`
+- `cohere`
+- `meta`
+- `ai21`
+- `alephalpha`
+- `nvidia`
+- `watsonx`
+- `deepseek`
+- `xai`
+- `databricks`
+- `fireworks`
+- `groq`
+- `together`
+- `perplexity`
+
 ## Refreshing this document
 
-All providers are listed by a single LiteLLM catalogue endpoint:
+This document is generated. Do not edit it by hand — edit `scripts/providers.yaml`
+and run:
 
 ```bash
-curl -s $BASE/litellm/v1/models | jq '.data[].id'
+make generate-docs
 ```
