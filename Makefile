@@ -12,6 +12,9 @@ MGMT_PORT           ?= 7656
 PREFIX              ?= proxy-cli:http
 TOKEN_PATH          ?= oauth2/token
 
+# Prevent MSYS2/Git Bash from converting Unix-style paths in Docker volume mounts.
+export MSYS_NO_PATHCONV := 1
+
 # k3d / Helm settings
 IMAGE_NAME          := ai-proxy
 IMAGE_VERSION       := latest
@@ -104,7 +107,7 @@ uninstall-k3d: ## Uninstall Helm release from k3d cluster
 	helm uninstall $(IMAGE_NAME)
 
 generate-helm-docs: ## Regenerate chart README.md via helm-docs (Docker)
-	MSYS_NO_PATHCONV=1 docker run --rm --volume "$(CURDIR)/charts:/helm-docs" jnorwood/helm-docs:latest
+	docker run --rm --volume "$(CURDIR)/charts:/helm-docs" jnorwood/helm-docs:latest
 
 generate-docs: generate-helm-docs ## Regenerate chart README + docs/providers-and-models.md from the live proxy
 	cd scripts && go run ./refresh-models -config providers.yaml -doc ../docs/providers-and-models.md
